@@ -1,0 +1,6 @@
+{
+  "name": "Hospital Performance Dashboard",
+  "description": "An interactive, high-fidelity healthcare analytics dashboard for comparing hospital performance against peer groups, exploring metrics by department, and running what-if simulations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
