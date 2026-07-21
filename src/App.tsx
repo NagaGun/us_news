@@ -8,6 +8,7 @@ import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import MetricCards from './components/MetricCards';
 import MetricTable from './components/MetricTable';
+import ChatWidget from './components/ChatWidget';
 
 import { PEER_GROUPS, DEPARTMENTS, BASELINE_TARGETS } from './data';
 import { calculateScores } from './utils';
@@ -103,8 +104,9 @@ export default function App() {
   }, [activeValues, selectedDept]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex">
-      {/* 1. Left Fixed Sidebar */}
+    <>
+      <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex">
+        {/* 1. Left Fixed Sidebar */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Content Pane */}
@@ -170,6 +172,9 @@ export default function App() {
               <MetricCards
                 categoryScores={simulatedCalculation.categoryScores}
                 compositeScore={simulatedCalculation.compositeScore}
+                baselineCategoryScores={baselineCalculation.categoryScores}
+                baselineCompositeScore={baselineCalculation.compositeScore}
+                isSimulated={isSimulated}
               />
 
               {/* 3. Quality Diagnostics (Proportionate Heat-Mapped Ledger & Simulation Workspace) */}
@@ -285,5 +290,9 @@ export default function App() {
         </main>
       </div>
     </div>
+
+    {/* Floating Operations Assistant Chatbot — overlays all content */}
+    <ChatWidget />
+    </>
   );
 }
