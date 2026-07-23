@@ -25,7 +25,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
           <Activity className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="text-sm font-bold tracking-wider uppercase text-slate-100">CareAnalytics</h1>
+          <h1 className="text-sm font-bold tracking-wider uppercase text-slate-100">US Hospital News</h1>
           <p className="text-[10px] text-slate-400 font-mono">HOSPITAL OS v3.2</p>
         </div>
       </div>
@@ -60,11 +60,10 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
               id={`nav-item-${item.id}`}
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-150 ${
-                isActive
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-150 ${isActive
                   ? 'bg-slate-800 text-white border-r-4 border-blue-500'
                   : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
                 <Icon className={`w-4 h-4 ${isActive ? 'text-blue-500' : 'text-slate-400'}`} />
