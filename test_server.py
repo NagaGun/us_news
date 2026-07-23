@@ -166,6 +166,29 @@ class TestChatRoute(unittest.TestCase):
         self.assertIn("overall_composite", data["simulated"])
         self.assertIn("category_cards", data["simulated"])
 
+    # --- ML Predict endpoint cases ---
+
+    def test_predict_endpoint(self):
+        """POST /api/predict should execute ML models and return raw predictions & normalized scores."""
+        payload = {
+            "patient_volume": 1400,
+            "intensivists_staffing": 75.0,
+            "nurse_magnet": 1
+        }
+        response = self.client.post(
+            "/api/predict",
+            data=json.dumps(payload),
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertIn("predicted_raw", data)
+        self.assertIn("predicted_scores", data)
+        self.assertIn("notes", data)
+        self.assertIn("discharge_home_rate", data["predicted_raw"])
+        self.assertIn("calculated_smr", data["predicted_raw"])
+        self.assertIn("nurse_staffing_ratio", data["predicted_scores"])
+
     # --- Health check ---
 
     def test_health_endpoint(self):

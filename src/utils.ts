@@ -116,14 +116,7 @@ export function calculateScores(
   });
 
   // Calculate Overall Composite Score out of 100
-  let overallScore = 0;
-  overallScore += categoryScores.Outcome * (CATEGORY_WEIGHTS.Outcome / 100);
-  overallScore += categoryScores.Structure * (CATEGORY_WEIGHTS.Structure / 100);
-  overallScore += categoryScores.Process * (CATEGORY_WEIGHTS.Process / 100);
-  overallScore += categoryScores.PatientExp * (CATEGORY_WEIGHTS['Patient Exp'] / 100); // Wait, "Patient Exp" vs PatientExp
-  
-  // Let's use CATEGORY_WEIGHTS key access
-  let compositeScore = 
+  const compositeScore = 
     (categoryScores.Outcome * CATEGORY_WEIGHTS.Outcome +
      categoryScores.Structure * CATEGORY_WEIGHTS.Structure +
      categoryScores.Process * CATEGORY_WEIGHTS.Process +

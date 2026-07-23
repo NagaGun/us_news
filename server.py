@@ -5,7 +5,9 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from middleware import SecureHospitalChatbotMiddleware
-from engine import evaluate_hospital
+from engine import evaluate_hospital, normalize_metric, METRIC_LIMITS
+from ml_models import predict_all_submetrics
+from mock_data import HOSPITAL_DATA
 
 app = Flask(__name__)
 CORS(app)  # Allow requests from the Vite dev server origin
@@ -85,6 +87,88 @@ def simulate():
         }), 200
     except Exception as e:
         return jsonify({"error": f"Simulation execution failed: {str(e)}"}), 500
+
+
+@app.route("/api/predict", methods=["POST"])
+def predict():
+    """
+    POST /api/predict
+    Note: ml_models.py is trained on a synthetic/simulated dataset of 100 Bay Area hospitals
+    using Random Forest and Linear Regression models. Its predictions demonstrate ML-based
+    operational outcome forecasting and are illustrative rather than clinically validated.
+
+    Body:
+    {
+        "patient_volume": number (optional),
+        "intensivists_staffing": number (optional),
+        "nurse_magnet": 0 | 1 (optional),
+        "public_transparency": number (optional)
+    }
+
+    Returns:
+    {
+        "predicted_raw": { ... },
+        "predicted_scores": { ... },
+        "notes": string
+    }
+    """
+    data = request.get_json(silent=True) or {}
+    baseline_hospital = HOSPITAL_DATA.get("Cardiology", {}).get("my_hospital", {}).copy()
+
+    # Merge default hospital values with incoming request payload overrides
+    input_state = {
+        "patient_volume": float(data.get("patient_volume", baseline_hospital.get("patient_volume", 600))),
+        "nurse_staffing_ratio": float(data.get("nurse_staffing_ratio", baseline_hospital.get("nurse_staffing_ratio", 6.5))),
+        "nurse_magnet": int(data.get("nurse_magnet", baseline_hospital.get("nurse_magnet", 0))),
+        "intensivists_staffing": float(data.get("intensivists_staffing", baseline_hospital.get("intensivists_staffing", 40.0))),
+        "expert_consults": float(data.get("expert_consults", baseline_hospital.get("expert_consults", 85.0))),
+        "public_transparency": float(data.get("public_transparency", baseline_hospital.get("public_transparency", 92.0))),
+        "hcahps_score": float(data.get("hcahps_score", baseline_hospital.get("hcahps_score", 75.0)))
+    }
+
+    try:
+        # 1. Execute Random Forest + Linear Regression predictions from ml_models.py
+        raw_predictions = predict_all_submetrics(input_state)
+
+        # 2. Reconcile unit mismatch: convert mortality_survival_index (~75-100%, higher=better)
+        # into calculated_smr (0.5-1.5 ratio, lower=better) via linear transformation
+        surv_index = raw_predictions.get("mortality_survival_index", 90.0)
+        derived_smr = max(0.5, min(1.5, round(1.0 + (90.0 - surv_index) / 20.0, 3)))
+        raw_predictions["calculated_smr"] = derived_smr
+
+        # 3. Normalize predicted metric values into 0-100 scores using engine.py METRIC_LIMITS
+        predicted_scores = {}
+        for key, val in raw_predictions.items():
+            if key in METRIC_LIMITS:
+                limits = METRIC_LIMITS[key]
+                predicted_scores[key] = normalize_metric(
+                    val=val,
+                    min_val=limits["min"],
+                    max_val=limits["max"],
+                    higher_is_better=limits["higher_is_better"]
+                )
+
+        # Also normalize mortality_survival_index directly on 75-100 scale for explicit visibility
+        if "mortality_survival_index" in raw_predictions:
+            val = raw_predictions["mortality_survival_index"]
+            predicted_scores["mortality_survival_index"] = float(max(0.0, min(100.0, ((val - 75.0) / (100.0 - 75.0)) * 100)))
+
+        notes = (
+            "ml_models.py is trained on synthetic/simulated hospital state data (100 Bay Area hospitals) "
+            "using Random Forest and Linear Regression models. Predictions are illustrative. "
+            "Reconciliation: mortality_survival_index (~75-100%, higher=better) was mapped to "
+            "calculated_smr (0.5-1.5 ratio, lower=better) via formula `1.0 + (90.0 - survival_index)/20.0` "
+            "to enable scoring against engine.py METRIC_LIMITS."
+        )
+
+        return jsonify({
+            "predicted_raw": raw_predictions,
+            "predicted_scores": predicted_scores,
+            "notes": notes
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": f"ML prediction execution failed: {str(e)}"}), 500
 
 
 @app.route("/api/health", methods=["GET"])
