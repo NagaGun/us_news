@@ -84,7 +84,10 @@ export function calculateScores(
     const peerTarget = getPeerTargetValue(metric, baseTarget, peerGroup.targetModifier);
     
     const variance = getVariance(hospitalValue, peerTarget);
-    const normalizedHospitalScore = getNormalizedScore(metric, hospitalValue);
+    const rawNormalizedScore = getNormalizedScore(metric, hospitalValue);
+    // Score relative to target benchmark (targetModifier):
+    // Higher targetModifier (e.g. 1.12 National Top 10%) represents a tougher benchmark, so score is scaled relative to the peer target.
+    const normalizedHospitalScore = Math.max(0, Math.min(100, parseFloat((rawNormalizedScore / peerGroup.targetModifier).toFixed(1))));
     
     // Track category weights and scores
     const categoryInfo = categorySums[metric.category];

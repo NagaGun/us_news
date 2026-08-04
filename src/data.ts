@@ -288,18 +288,78 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'Wind',
     description: 'Pulmonary medicine, chronic obstructive disease therapy, mechanical ventilator weaning, and asthma clinics.',
     metrics: {
-      mortality_survival: 93.0,   // Statewide target: 92.0 (Outperforming)
-      discharge_home: 81.0,      // Statewide target: 83.0 (Underperforming)
-      patient_volume: 950,       // Statewide target: 800 (Outperforming)
-      advanced_tech: 75,         // Statewide target: 80 (Underperforming)
-      nurse_staffing: 2.4,       // Statewide target: 2.8 (Underperforming)
-      nurse_magnet: 78,          // Statewide target: 80 (Underperforming)
-      intensivists: 14,          // Statewide target: 16 (Underperforming)
-      patient_services: 80,      // Statewide target: 80 (Met)
-      trauma_readiness: 70,      // Statewide target: 75 (Underperforming)
-      specialist_consults: 88.0, // Statewide target: 85.0 (Outperforming)
-      public_transparency: 80,   // Statewide target: 80 (Met)
-      hcahps_experience: 74,     // Statewide target: 74 (Met)
+      mortality_survival: 93.0,
+      discharge_home: 81.0,
+      patient_volume: 950,
+      advanced_tech: 75,
+      nurse_staffing: 2.4,
+      nurse_magnet: 78,
+      intensivists: 14,
+      patient_services: 80,
+      trauma_readiness: 70,
+      specialist_consults: 88.0,
+      public_transparency: 80,
+      hcahps_experience: 74,
+    },
+  },
+  {
+    id: 'ortho',
+    name: 'Orthopedics & Joint Care',
+    iconName: 'Bone',
+    description: 'Joint replacement centers, spine surgical pathways, sports medicine, trauma rehabilitation, and rheumatology.',
+    metrics: {
+      mortality_survival: 96.8,
+      discharge_home: 88.5,
+      patient_volume: 1100,
+      advanced_tech: 90,
+      nurse_staffing: 2.9,
+      nurse_magnet: 85,
+      intensivists: 12,
+      patient_services: 86,
+      trauma_readiness: 80,
+      specialist_consults: 90.0,
+      public_transparency: 92,
+      hcahps_experience: 81,
+    },
+  },
+  {
+    id: 'urology',
+    name: 'Urology & Renal Care',
+    iconName: 'Activity',
+    description: 'Kidney disease management, robotic prostate surgery, urologic oncology, and inpatient hemodialysis clinical pathways.',
+    metrics: {
+      mortality_survival: 95.0,
+      discharge_home: 86.0,
+      patient_volume: 640,
+      advanced_tech: 88,
+      nurse_staffing: 2.6,
+      nurse_magnet: 82,
+      intensivists: 14,
+      patient_services: 88,
+      trauma_readiness: 65,
+      specialist_consults: 87.0,
+      public_transparency: 89,
+      hcahps_experience: 78,
+    },
+  },
+  {
+    id: 'geriatrics',
+    name: 'Geriatrics & Senior Care',
+    iconName: 'Users',
+    description: 'Comprehensive acute senior care units, memory disorders, inpatient frailty assessment, and palliative clinical medicine.',
+    metrics: {
+      mortality_survival: 91.0,
+      discharge_home: 72.0,
+      patient_volume: 890,
+      advanced_tech: 72,
+      nurse_staffing: 3.2,
+      nurse_magnet: 88,
+      intensivists: 16,
+      patient_services: 95,
+      trauma_readiness: 55,
+      specialist_consults: 93.0,
+      public_transparency: 94,
+      hcahps_experience: 83,
     },
   },
 ];

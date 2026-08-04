@@ -9,6 +9,8 @@ import TopBar from './components/TopBar';
 import MetricCards from './components/MetricCards';
 import MetricTable from './components/MetricTable';
 import ChatWidget from './components/ChatWidget';
+import CompareView from './components/CompareView';
+import LandingPage from './components/LandingPage';
 
 import { PEER_GROUPS, DEPARTMENTS, BASELINE_TARGETS } from './data';
 import { calculateScores } from './utils';
@@ -30,7 +32,7 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<string>('home');
+  const [activeTab, setActiveTab] = useState<string>('landing');
   const [selectedPeerGroup, setSelectedPeerGroup] = useState<PeerGroup>(PEER_GROUPS[1]); // Statewide Avg default
   const [selectedDept, setSelectedDept] = useState<DepartmentData>(DEPARTMENTS[0]); // Cancer default
   const [activeSimulationId, setActiveSimulationId] = useState<string | null>(null);
@@ -103,6 +105,11 @@ export default function App() {
     ).length;
   }, [activeValues, selectedDept]);
 
+  // Landing page — full bleed, no sidebar/topbar
+  if (activeTab === 'landing') {
+    return <LandingPage onEnterApp={() => setActiveTab('home')} />;
+  }
+
   return (
     <>
       <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex">
@@ -112,19 +119,27 @@ export default function App() {
         {/* Main Content Pane */}
         <div className="flex-1 pl-64 flex flex-col min-w-0">
 
-          {/* Top Control Bar */}
-          <TopBar
-            selectedPeerGroup={selectedPeerGroup}
-            setSelectedPeerGroup={setSelectedPeerGroup}
-            selectedDept={selectedDept}
-            setSelectedDept={setSelectedDept}
-            onResetSimulation={handleResetActiveDeptSimulation}
-            isSimulated={isSimulated}
-          />
+          {/* Top Control Bar (Shown on Home and Hospitals pages) */}
+          {activeTab !== 'compare' && (
+            <TopBar
+              selectedPeerGroup={selectedPeerGroup}
+              setSelectedPeerGroup={setSelectedPeerGroup}
+              selectedDept={selectedDept}
+              setSelectedDept={setSelectedDept}
+              onResetSimulation={handleResetActiveDeptSimulation}
+              isSimulated={isSimulated}
+              showPeerGroupSelector={activeTab === 'home'}
+            />
+          )}
 
           {/* View Routing */}
           <main className="flex-grow p-8 max-w-7xl w-full mx-auto pb-24">
-            {activeTab === 'home' ? (
+            {activeTab === 'compare' ? (
+              <CompareView
+                selectedDept={selectedDept}
+                setSelectedDept={setSelectedDept}
+              />
+            ) : activeTab === 'home' ? (
               <div className="space-y-6">
 
                 {/* Executive Summary Alert Banner */}
@@ -194,13 +209,25 @@ export default function App() {
               /* Affiliate network peer view */
               <div id="affiliates-view" className="space-y-6">
                 <div className="bg-white border border-slate-200 rounded-2xl p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Building2 className="w-6 h-6 text-blue-600" />
-                    <h2 className="text-lg font-bold text-slate-900">Metropolitan Clinical Network</h2>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <Building2 className="w-6 h-6 text-blue-600" />
+                        <h2 className="text-lg font-bold text-slate-900">Metropolitan Clinical Network</h2>
+                      </div>
+                      <p className="text-sm text-slate-500 max-w-2xl">
+                        Comparative performance audit of Metropolitan Health System branches. View operational size, license grades, and active bed allocations.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => setActiveTab('compare')}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Open Quality / Compare View</span>
+                      <span>→</span>
+                    </button>
                   </div>
-                  <p className="text-sm text-slate-500 max-w-2xl">
-                    Comparative performance audit of Metropolitan Health System branches. View operational size, license grades, and active bed allocations.
-                  </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
                     {/* Branch 1 */}
@@ -262,7 +289,7 @@ export default function App() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-100 uppercase tracking-wider font-mono">Pediatric Specialized</span>
-                          <h3 className="text-sm font-bold text-slate-900 mt-1.5">Children\'s Specialty Center</h3>
+                          <h3 className="text-sm font-bold text-slate-900 mt-1.5">Children's Specialty Center</h3>
                         </div>
                         <span className="text-lg font-black text-slate-900 font-mono bg-amber-500/10 px-2 py-0.5 rounded">
                           A-

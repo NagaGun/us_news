@@ -1,6 +1,22 @@
 import os
 from mock_data import HOSPITAL_DATA
 
+# Auto-load environment variables from .env or .env.example if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    if not os.environ.get("GEMINI_API_KEY") and os.path.exists(".env.example"):
+        load_dotenv(".env.example")
+except ImportError:
+    for env_file in [".env", ".env.example"]:
+        if os.path.exists(env_file):
+            with open(env_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ.setdefault(k.strip(), v.strip().strip('"\''))
+
 # Detect Google GenAI SDK availability (supports both google.genai and google.generativeai)
 GEMINI_AVAILABLE = False
 GEMINI_SDK_TYPE = None

@@ -15,6 +15,7 @@ interface TopBarProps {
   setSelectedDept: (dept: DepartmentData) => void;
   onResetSimulation: () => void;
   isSimulated: boolean;
+  showPeerGroupSelector?: boolean;
 }
 
 export default function TopBar({
@@ -24,6 +25,7 @@ export default function TopBar({
   setSelectedDept,
   onResetSimulation,
   isSimulated,
+  showPeerGroupSelector = true,
 }: TopBarProps) {
   return (
     <header id="dashboard-header" className="bg-white border-b border-slate-200 px-8 py-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sticky top-0 z-20 shadow-xs">
@@ -71,29 +73,31 @@ export default function TopBar({
           </select>
         </div>
 
-        {/* Peer Group Selector */}
-        <div className="flex flex-col">
-          <label htmlFor="peer-group-selector" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 font-mono">
-            Benchmark Peer Group
-          </label>
-          <div className="relative">
-            <select
-              id="peer-group-selector"
-              value={selectedPeerGroup.id}
-              onChange={(e) => {
-                const pg = PEER_GROUPS.find((p) => p.id === e.target.value);
-                if (pg) setSelectedPeerGroup(pg);
-              }}
-              className="bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 py-2 px-3 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
-            >
-              {PEER_GROUPS.map((pg) => (
-                <option key={pg.id} value={pg.id}>
-                  {pg.name} (x{(pg.targetModifier).toFixed(2)})
-                </option>
-              ))}
-            </select>
+        {/* Benchmark Peer Group Selector (Home Page) */}
+        {showPeerGroupSelector && (
+          <div className="flex flex-col">
+            <label htmlFor="peer-group-selector" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 font-mono">
+              Benchmark Peer Group
+            </label>
+            <div className="relative">
+              <select
+                id="peer-group-selector"
+                value={selectedPeerGroup.id}
+                onChange={(e) => {
+                  const pg = PEER_GROUPS.find((p) => p.id === e.target.value);
+                  if (pg) setSelectedPeerGroup(pg);
+                }}
+                className="bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 py-2 px-3 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
+              >
+                {PEER_GROUPS.map((pg) => (
+                  <option key={pg.id} value={pg.id}>
+                    {pg.name} (x{(pg.targetModifier).toFixed(2)})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Reset Simulation Button */}
         {isSimulated && (

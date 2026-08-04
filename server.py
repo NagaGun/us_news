@@ -171,6 +171,21 @@ def predict():
         return jsonify({"error": f"ML prediction execution failed: {str(e)}"}), 500
 
 
+@app.route("/api/hospitals/compare", methods=["GET"])
+def compare():
+    """
+    GET /api/hospitals/compare?dept=Cancer
+    Returns mock hospital comparison data for the given department.
+    """
+    dept = request.args.get("dept", "Cancer")
+    dept_data = HOSPITAL_DATA.get(dept, HOSPITAL_DATA.get("Cancer"))
+    return jsonify({
+        "department": dept,
+        "my_hospital": dept_data["my_hospital"],
+        "peer_group": dept_data["peer_group"]
+    }), 200
+
+
 @app.route("/api/health", methods=["GET"])
 def health():
     """Simple liveness check."""
@@ -179,3 +194,4 @@ def health():
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
+
