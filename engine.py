@@ -1,15 +1,22 @@
-
 # Baseline constraints and scaling limits
 # Checked with clinical team: protects against extreme outlier data throwing off total scores.
 METRIC_LIMITS = {
-    "patient_volume": {"min": 500.0, "max": 3000.0, "higher_is_better": True},
-    "calculated_smr": {"min": 0.5, "max": 1.5, "higher_is_better": False}, 
-    "discharge_home_rate": {"min": 50.0, "max": 95.0, "higher_is_better": True},
-    "nurse_staffing_ratio": {"min": 2.0, "max": 10.0, "higher_is_better": False},
-    "intensivists_staffing": {"min": 0.0, "max": 100.0, "higher_is_better": True},
-    "expert_consults": {"min": 50.0, "max": 100.0, "higher_is_better": True},
-    "public_transparency": {"min": 0.0, "max": 100.0, "higher_is_better": True},
-    "hcahps_score": {"min": 60.0, "max": 100.0, "higher_is_better": True}
+    # Outcome
+    "mortality_survival": {"min": 0.0, "max": 50.0, "higher_is_better": False},  # Number of deaths (lower = better)
+    "discharge_home": {"min": 60.0, "max": 100.0, "higher_is_better": True},
+    # Structure
+    "patient_volume": {"min": 200.0, "max": 1500.0, "higher_is_better": True},
+    "advanced_tech": {"min": 0.0, "max": 1.0, "higher_is_better": True},         # Boolean: 0=no, 1=yes
+    "nurse_staffing": {"min": 1.0, "max": 4.5, "higher_is_better": True},
+    "nurse_magnet": {"min": 50.0, "max": 100.0, "higher_is_better": True},
+    "intensivists": {"min": 4.0, "max": 24.0, "higher_is_better": True},
+    "patient_services": {"min": 50.0, "max": 100.0, "higher_is_better": True},
+    "trauma_readiness": {"min": 0.0, "max": 1.0, "higher_is_better": True},      # Boolean: 0=no, 1=yes
+    # Process
+    "specialist_consults": {"min": 65.0, "max": 100.0, "higher_is_better": True},
+    "public_transparency": {"min": 50.0, "max": 100.0, "higher_is_better": True},
+    # Patient Experience
+    "hcahps_experience": {"min": 50.0, "max": 100.0, "higher_is_better": True},
 }
 
 def normalize_metric(val, min_val, max_val, higher_is_better=True):

@@ -73,12 +73,20 @@ export default function MetricTable({
     return metricResults.find((r) => r.metric.id === activeSimulationId) || null;
   }, [activeSimulationId, metricResults]);
 
-  // Top clinical strengths (variance >= 0, sorted descending, limit 3)
+  // Top clinical strengths (variance >= 0, sorted descending, limit 2)
   const strengths = useMemo(() => {
     return [...metricResults]
       .filter((r) => r.variance >= 0)
       .sort((a, b) => b.variance - a.variance)
-      .slice(0, 3);
+      .slice(0, 2);
+  }, [metricResults]);
+
+  // Top priority improvements (variance < 0, sorted ascending by variance, limit 2)
+  const improvements = useMemo(() => {
+    return [...metricResults]
+      .filter((r) => r.variance < 0)
+      .sort((a, b) => a.variance - b.variance)
+      .slice(0, 2);
   }, [metricResults]);
 
   const categoryScores = categoryScoresAfter || {
@@ -308,7 +316,7 @@ export default function MetricTable({
                     </span>
                   </div>
 
-                  {/* Slider & adjustment controls */}
+                  {/* Slider for numeric metrics OR Yes/No toggle for boolean metrics */}
                   <div className="space-y-1.5 bg-slate-900 text-white rounded-xl p-3.5 border border-slate-800">
                     <div className="flex justify-between items-center">
                       <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Adjustment level</span>
@@ -318,21 +326,49 @@ export default function MetricTable({
                     </div>
 
                     {onSimulationValueChange && (
-                      <input
-                        type="range"
-                        min={m.min}
-                        max={m.max}
-                        step={m.unit === 'FTE' ? 0.05 : m.unit === 'hr/d' ? 0.5 : 0.5}
-                        value={simulatedValue}
-                        onChange={(e) => onSimulationValueChange(m.id, parseFloat(e.target.value))}
-                        className="w-full accent-blue-500 bg-slate-800 rounded-lg appearance-none h-1 cursor-pointer focus:outline-none"
-                      />
+                      m.unit === 'boolean' ? (
+                        /* Boolean toggle: Yes / No buttons */
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={() => onSimulationValueChange(m.id, 1)}
+                            className={`flex-1 py-2 rounded-lg text-[10px] font-extrabold transition-all border cursor-pointer ${
+                              simulatedValue >= 0.5
+                                ? 'bg-emerald-500 text-white border-emerald-400 shadow-sm'
+                                : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                            }`}
+                          >
+                            ✓ Yes — Adopted
+                          </button>
+                          <button
+                            onClick={() => onSimulationValueChange(m.id, 0)}
+                            className={`flex-1 py-2 rounded-lg text-[10px] font-extrabold transition-all border cursor-pointer ${
+                              simulatedValue < 0.5
+                                ? 'bg-rose-500 text-white border-rose-400 shadow-sm'
+                                : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                            }`}
+                          >
+                            ✗ No — Not Adopted
+                          </button>
+                        </div>
+                      ) : (
+                        <input
+                          type="range"
+                          min={m.min}
+                          max={m.max}
+                          step={m.unit === 'FTE' ? 0.05 : m.unit === 'hr/d' ? 0.5 : m.unit === '#' ? 1 : 0.5}
+                          value={simulatedValue}
+                          onChange={(e) => onSimulationValueChange(m.id, parseFloat(e.target.value))}
+                          className="w-full accent-blue-500 bg-slate-800 rounded-lg appearance-none h-1 cursor-pointer focus:outline-none"
+                        />
+                      )
                     )}
 
-                    <div className="flex justify-between text-[8px] font-bold text-slate-500 font-mono">
-                      <span>MIN: {formatMetricValue(m.min, m.unit)}</span>
-                      <span>MAX: {formatMetricValue(m.max, m.unit)}</span>
-                    </div>
+                    {m.unit !== 'boolean' && (
+                      <div className="flex justify-between text-[8px] font-bold text-slate-500 font-mono">
+                        <span>{m.inverted ? 'BEST:' : 'MIN:'} {formatMetricValue(m.min, m.unit)}</span>
+                        <span>{m.inverted ? 'WORST:' : 'MAX:'} {formatMetricValue(m.max, m.unit)}</span>
+                      </div>
+                    )}
 
                     {/* Presets */}
                     <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-850">
@@ -411,30 +447,26 @@ export default function MetricTable({
             /* ======================================================================= */
             /* ==================== CLINICAL STRENGTHS DEFAULT PANEL ================= */
             /* ======================================================================= */
-            <div id="strengths-box" className="bg-emerald-50/45 border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between w-full shadow-3xs">
+            <div id="strengths-box" className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col w-full shadow-3xs gap-4">
+              {/* Clinical Strengths */}
               <div>
                 <div className="flex items-center gap-1.5 text-emerald-800 mb-2">
-                  <ShieldCheck className="w-4.5 h-4.5 text-emerald-600" />
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   <h4 className="text-[11px] font-black uppercase tracking-wider">Clinical Strengths</h4>
                 </div>
-                
-                <p className="text-[10px] text-slate-500 leading-relaxed mb-3">
-                  The clinical department outperforms peer targets significantly in these specific areas.
-                </p>
-
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {strengths.length === 0 ? (
                     <div className="text-[10px] text-slate-400 italic">No outperforming metrics.</div>
                   ) : (
                     strengths.map((s) => (
-                      <div key={s.metric.id} className="bg-white/85 p-2.5 rounded-xl border border-emerald-100/60 flex items-center justify-between shadow-3xs">
+                      <div key={s.metric.id} className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-100/70 flex items-center justify-between">
                         <div className="max-w-[70%]">
                           <span className="text-[10px] font-bold text-slate-800 block leading-tight">{s.metric.name}</span>
                           <span className="text-[8.5px] text-slate-400 font-mono mt-0.5 block">
-                            Value: {formatMetricValue(s.hospitalValue, s.metric.unit)}
+                            {formatMetricValue(s.hospitalValue, s.metric.unit)}
                           </span>
                         </div>
-                        <span className="text-[9.5px] font-mono font-black text-emerald-600 bg-emerald-50/50 px-1.5 py-0.5 rounded-md border border-emerald-200">
+                        <span className="text-[9.5px] font-mono font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
                           +{s.variance.toFixed(0)}%
                         </span>
                       </div>
@@ -443,7 +475,40 @@ export default function MetricTable({
                 </div>
               </div>
 
-              <div className="text-[9px] text-slate-450 font-mono mt-4 pt-3 border-t border-emerald-100/50">
+              {/* Divider */}
+              <div className="border-t border-slate-100" />
+
+              {/* Priority Improvements */}
+              <div>
+                <div className="flex items-center gap-1.5 text-amber-800 mb-2">
+                  <TrendingUp className="w-4 h-4 text-amber-600" />
+                  <h4 className="text-[11px] font-black uppercase tracking-wider">Priority Improvements</h4>
+                </div>
+                <div className="space-y-1.5">
+                  {improvements.length === 0 ? (
+                    <div className="text-[10px] text-slate-400 italic">All metrics meeting target.</div>
+                  ) : (
+                    improvements.map((imp) => (
+                      <div key={imp.metric.id} className="bg-amber-50/60 p-2 rounded-xl border border-amber-100/70 flex items-center justify-between">
+                        <div className="max-w-[60%]">
+                          <span className="text-[10px] font-bold text-slate-800 block leading-tight">{imp.metric.name}</span>
+                          <span className="text-[8.5px] text-slate-400 font-mono mt-0.5 block">
+                            {formatMetricValue(imp.hospitalValue, imp.metric.unit)}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setActiveSimulationId(imp.metric.id)}
+                          className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-700 text-[9px] font-bold rounded-lg transition-colors border border-amber-200 cursor-pointer"
+                        >
+                          Simulate
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="text-[9px] text-slate-400 font-mono pt-2 border-t border-slate-100/60 mt-auto">
                 Source: Live Department Quality Audit
               </div>
             </div>

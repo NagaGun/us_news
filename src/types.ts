@@ -14,6 +14,7 @@ export interface MetricDefinition {
   min: number;
   max: number;
   weightInCategory: number; // Percentage, e.g., 40 means 40% weight within the category
+  inverted?: boolean; // If true, lower raw values score higher (e.g. number of deaths, nurse-to-patient ratio)
 }
 
 export interface MetricValue {

@@ -16,6 +16,15 @@ interface CompareViewProps {
 }
 
 export default function CompareView({ selectedDept, setSelectedDept }: CompareViewProps) {
+  const MY_COLOR = '#1E3A8A'; // Dark Blue
+  const PEER_COLORS = [
+    '#059669', // Emerald
+    '#D97706', // Amber
+    '#7C3AED', // Violet
+    '#DB2777', // Pink
+    '#0284C7', // Light Blue
+  ];
+
   // Selected peer hospitals state (default to first 3 peers)
   const [selectedPeerIds, setSelectedPeerIds] = useState<string[]>([
     'riverside',
@@ -277,15 +286,14 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
                       {myScore}
                     </span>
                     <div
-                      className="w-full max-w-[26px] bg-[#3B5BFF] rounded-t-md transition-all duration-300"
-                      style={{ height: `${Math.max(10, Math.min(100, myScore))}%` }}
+                      className="w-full max-w-[26px] rounded-t-md transition-all duration-300"
+                      style={{ height: `${Math.max(10, Math.min(100, myScore))}%`, backgroundColor: MY_COLOR }}
                     ></div>
                   </div>
 
                   {/* Peer Bars */}
-                  {peersCategoryScores.map(({ peer, scores }) => {
+                  {peersCategoryScores.map(({ peer, scores }, peerIdx) => {
                     const peerScore = scores[cat.key] || 0;
-                    const isPeerAhead = peerScore > myScore;
 
                     return (
                       <div key={peer.id} className="flex-1 flex flex-col items-center justify-end h-full">
@@ -293,10 +301,8 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
                           {peerScore}
                         </span>
                         <div
-                          className={`w-full max-w-[26px] rounded-t-md transition-all duration-300 ${
-                            isPeerAhead ? 'bg-[#FBD2D6]' : 'bg-[#CFE0FF]'
-                          }`}
-                          style={{ height: `${Math.max(10, Math.min(100, peerScore))}%` }}
+                          className="w-full max-w-[26px] rounded-t-md transition-all duration-300"
+                          style={{ height: `${Math.max(10, Math.min(100, peerScore))}%`, backgroundColor: PEER_COLORS[peerIdx % PEER_COLORS.length] }}
                         ></div>
                       </div>
                     );
@@ -305,7 +311,7 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
 
                 {/* Bar Foot Labels */}
                 <div className="flex gap-2 text-center text-[9.5px] font-bold text-slate-500 tracking-wider">
-                  <span className="flex-1 text-[#3B5BFF]">You</span>
+                  <span className="flex-1" style={{ color: MY_COLOR }}>You</span>
                   {selectedPeers.map((peer) => (
                     <span key={peer.id} className="flex-1 text-slate-500">
                       {peer.shortCode}
@@ -320,17 +326,15 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-6 mt-6 pt-4 border-t border-[#E7EAF0] text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded bg-[#3B5BFF] inline-block"></span>
+            <span className="w-3.5 h-3.5 rounded inline-block" style={{ backgroundColor: MY_COLOR }}></span>
             <span>Your hospital</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded bg-[#CFE0FF] inline-block"></span>
-            <span>Peer below you</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded bg-[#FBD2D6] inline-block"></span>
-            <span>Peer above you</span>
-          </div>
+          {selectedPeers.map((peer, peerIdx) => (
+            <div key={peer.id} className="flex items-center gap-2">
+              <span className="w-3.5 h-3.5 rounded inline-block" style={{ backgroundColor: PEER_COLORS[peerIdx % PEER_COLORS.length] }}></span>
+              <span>{peer.shortCode}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -409,13 +413,14 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
                     </td>
 
                     {/* Peer Columns */}
-                    {peersCategoryScores.map(({ peer, metrics }) => {
+                    {peersCategoryScores.map(({ peer, metrics }, peerIdx) => {
                       const peerVal = metrics[metric.id] ?? metric.min;
+                      const peerColor = PEER_COLORS[peerIdx % PEER_COLORS.length];
 
                       // Delta calculation
-                      // Default assumption: higher is better (except nurse staffing ratio if scaled)
-                      const rawDelta = myValue - peerVal;
-                      const isAhead = rawDelta >= 0;
+                      const rawDelta = peerVal - myValue;
+                      const isPeerHigher = rawDelta > 0;
+                      const isPeerLower = rawDelta < 0;
                       const absDelta = Math.abs(rawDelta);
 
                       const formattedPeerVal = formatMetricValue(peerVal, metric.unit);
@@ -435,19 +440,20 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
 
                             {/* Arrow Pill */}
                             <span
-                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md font-mono ${
-                                isAhead
-                                  ? 'bg-[#E7F8EE] text-[#0F9D58]'
-                                  : 'bg-[#FDEDED] text-[#E23744]'
-                              }`}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md font-mono"
+                              style={{ color: peerColor, backgroundColor: `${peerColor}1A` }}
                             >
-                              {isAhead ? (
+                              {isPeerHigher ? (
                                 <>
                                   <ArrowUp className="w-3 h-3" /> +{formattedDeltaStr}
                                 </>
-                              ) : (
+                              ) : isPeerLower ? (
                                 <>
                                   <ArrowDown className="w-3 h-3" /> -{formattedDeltaStr}
+                                </>
+                              ) : (
+                                <>
+                                  — 0
                                 </>
                               )}
                             </span>
@@ -465,16 +471,16 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
         {/* Table Legend */}
         <div className="flex flex-wrap items-center gap-6 mt-6 pt-4 border-t border-[#E7EAF0] text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-0.5 bg-[#E7F8EE] text-[#0F9D58] text-[10.5px] font-bold px-1.5 py-0.5 rounded">
+            <span className="inline-flex items-center gap-0.5 bg-slate-100 text-slate-600 text-[10.5px] font-bold px-1.5 py-0.5 rounded">
               ↑
             </span>
-            <span>Your hospital is ahead of this peer</span>
+            <span>This peer is performing higher than your hospital</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-0.5 bg-[#FDEDED] text-[#E23744] text-[10.5px] font-bold px-1.5 py-0.5 rounded">
+            <span className="inline-flex items-center gap-0.5 bg-slate-100 text-slate-600 text-[10.5px] font-bold px-1.5 py-0.5 rounded">
               ↓
             </span>
-            <span>This peer is ahead of your hospital</span>
+            <span>This peer is performing lower than your hospital</span>
           </div>
         </div>
       </div>

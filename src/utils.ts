@@ -11,7 +11,17 @@ import { METRIC_DEFINITIONS, BASELINE_TARGETS, CATEGORY_WEIGHTS } from './data';
  * If the metric is already a percentage or 0-100 rating, returns the value directly.
  */
 export function getNormalizedScore(metric: MetricDefinition, value: number): number {
-  const { min, max } = metric;
+  const { min, max, inverted } = metric;
+  if (metric.unit === 'boolean') {
+    // Boolean: 1 = adopted/yes = 100, 0 = not adopted/no = 0
+    return value >= 0.5 ? 100 : 0;
+  }
+  if (min === max) return 50;
+  if (inverted) {
+    // Lower value = better: invert the scale
+    const score = ((max - value) / (max - min)) * 100;
+    return Math.max(0, Math.min(100, score));
+  }
   if (min === 0 && max === 100) {
     return Math.max(0, Math.min(100, value));
   }
@@ -33,8 +43,14 @@ export function getPeerTargetValue(metric: MetricDefinition, baseTarget: number,
 /**
  * Calculates the percentage variance between the hospital value and the target value.
  */
-export function getVariance(value: number, target: number): number {
-  if (target === 0) return 0;
+export function getVariance(value: number, target: number, inverted?: boolean): number {
+  if (target === 0 && !inverted) return 0;
+  if (inverted) {
+    // For inverted metrics (lower is better), positive variance = fewer than target (good)
+    if (target === 0) return 0;
+    const variance = ((target - value) / target) * 100;
+    return parseFloat(variance.toFixed(1));
+  }
   const variance = ((value - target) / target) * 100;
   return parseFloat(variance.toFixed(1));
 }
@@ -43,6 +59,12 @@ export function getVariance(value: number, target: number): number {
  * Formats a raw value to look highly professional based on its units.
  */
 export function formatMetricValue(value: number, unit: string): string {
+  if (unit === 'boolean') {
+    return value >= 0.5 ? 'Yes' : 'No';
+  }
+  if (unit === '#') {
+    return `${Math.round(value)} deaths`;
+  }
   if (unit === '%') {
     return `${value.toFixed(1)}%`;
   }
@@ -83,7 +105,7 @@ export function calculateScores(
     const baseTarget = departmentTargets[metric.id] ?? BASELINE_TARGETS[metric.id];
     const peerTarget = getPeerTargetValue(metric, baseTarget, peerGroup.targetModifier);
     
-    const variance = getVariance(hospitalValue, peerTarget);
+    const variance = getVariance(hospitalValue, peerTarget, metric.inverted);
     const rawNormalizedScore = getNormalizedScore(metric, hospitalValue);
     // Score relative to target benchmark (targetModifier):
     // Higher targetModifier (e.g. 1.12 National Top 10%) represents a tougher benchmark, so score is scaled relative to the peer target.

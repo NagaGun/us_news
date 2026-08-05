@@ -62,6 +62,8 @@ function DeltaPill({ value, positive }: { value: string; positive: boolean }) {
 export default function LandingPage({ onEnterApp }: LandingPageProps) {
   const systems = useCountUp(240);
   const records = useCountUp(18);
+  const [mockStaffing, setMockStaffing] = useState(6.0);
+  const mockOutcome = Math.min(100, Math.max(0, 73 + (mockStaffing - 6.0) * 5));
 
   return (
     <div className="lp-root">
@@ -361,6 +363,16 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           overflow: hidden;
           box-shadow: 0 4px 24px rgba(0,0,0,0.06);
           width: 100%;
+          max-height: 400px;
+          position: relative;
+        }
+        .lp-demo-panel::after {
+          content: "";
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          height: 80px;
+          background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));
+          pointer-events: none;
         }
 
         /* ── BENCHMARK FEATURE PANEL ── */
@@ -630,12 +642,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           .lp-hero { padding: 32px 16px; }
           .lp-section-inner { padding: 0 16px; }
           .lp-footer-cta-inner { padding: 0 16px; }
-        }ew-scores { grid-template-columns: 1fr 1fr; }
-          .lp-dept-scores { grid-template-columns: 1fr 1fr; }
-          .lp-caps-grid { grid-template-columns: 1fr; }
           .lp-nav { padding: 0 5%; }
-          .lp-section-inner { padding: 0 5%; }
-          .lp-hero { padding: 28px 5%; }
         }
       `}</style>
 
@@ -696,8 +703,8 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
             <div className="lp-preview-scores">
               <div className="lp-score-chip">
                 <div className="lp-score-label">Outcome Index</div>
-                <div className="lp-score-val">73%</div>
-                <div className={`lp-score-status lp-status-green`}>▲ 2.1 pts avg</div>
+                <div className="lp-score-val">{mockOutcome.toFixed(1)}%</div>
+                <div className={`lp-score-status lp-status-green`}>▲ {(mockOutcome - 73 + 2.1).toFixed(1)} pts avg</div>
               </div>
               <div className="lp-score-chip">
                 <div className="lp-score-label">Structure Index</div>
@@ -717,24 +724,28 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
             </div>
             <div className="lp-preview-rows">
               <div className="lp-preview-row-hdr">
-                <span>Metric Level Peer Matrix Snapshot</span>
-                <span style={{ color: '#34D399' }}>▲ 3 Protected Clinical Gains</span>
+                <span>Interactive Simulation: Nurse Staffing</span>
+                <span style={{ color: '#34D399' }}>Drag to Simulate</span>
               </div>
-              {[
-                { name: '30-Day Mortality Survival Index', yours: '86.25', tag: 'pill-green', tagLabel: '+7.7' },
-                { name: 'Readmission Discharge-to-Home Rate', yours: '84.15', tag: 'pill-blue', tagLabel: 'Baseline' },
-                { name: 'Specialist Nurse Staffing Alignment', yours: '6.1', tag: 'pill-red', tagLabel: '−8' },
-              ].map((r) => (
-                <div key={r.name} className="lp-preview-row">
-                  <span className="lp-preview-metric">{r.name}</span>
-                  <div className="lp-preview-vals">
-                    <span className="lp-preview-yours">{r.yours}</span>
-                    <span className={`lp-preview-tag-pill ${r.tag === 'pill-green' ? 'lp-pill-green' : r.tag === 'pill-red' ? 'lp-pill-red' : 'lp-pill-blue'}`}>
-                      {r.tagLabel}
-                    </span>
-                  </div>
+              <div className="lp-preview-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                  <span className="lp-preview-metric">Specialist Nurse Staffing Ratio</span>
+                  <span className="lp-preview-yours">{mockStaffing.toFixed(1)} FTE</span>
                 </div>
-              ))}
+                <input
+                  type="range"
+                  min="4.0"
+                  max="10.0"
+                  step="0.1"
+                  value={mockStaffing}
+                  onChange={(e) => setMockStaffing(parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: '#3B5BFF', cursor: 'pointer' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 9, color: 'var(--lp-sub)', fontWeight: 600 }}>
+                  <span>Low Staffing</span>
+                  <span>Optimal Staffing</span>
+                </div>
+              </div>
             </div>
           </div>
           <div className="lp-preview-footer">
@@ -774,9 +785,9 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
                 <div style={{ marginBottom: 8, fontSize: 8.5, fontWeight: 700, color: 'var(--lp-sub)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Score Comparison by Category</span>
                   <div style={{ display: 'flex', gap: 10, fontSize: 8 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#3B5BFF', display: 'inline-block' }} /> You</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#CFE0FF', display: 'inline-block' }} /> Peer A</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#FBD2D6', display: 'inline-block' }} /> Peer B</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#1E3A8A', display: 'inline-block' }} /> You</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#059669', display: 'inline-block' }} /> Peer A</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#D97706', display: 'inline-block' }} /> Peer B</span>
                   </div>
                 </div>
                 {/* Bars */}
@@ -791,9 +802,9 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
                     <div key={cat.label} className="lp-cat-col">
                       <div className="lp-cat-title">{cat.label}</div>
                       <div className="lp-bars-group">
-                        <MiniBar height={cat.you} color="#3B5BFF" label="You" />
-                        <MiniBar height={cat.peerA} color="#CFE0FF" label="A" />
-                        <MiniBar height={cat.peerB} color="#FBD2D6" label="B" />
+                        <MiniBar height={cat.you} color="#1E3A8A" label="You" />
+                        <MiniBar height={cat.peerA} color="#059669" label="A" />
+                        <MiniBar height={cat.peerB} color="#D97706" label="B" />
                       </div>
                       <div className="lp-cat-score">{cat.you}</div>
                       <div className="lp-cat-legend">Your Score</div>
@@ -946,6 +957,11 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           <div className="lp-caps-grid">
             {[
               {
+                icon: <TrendingUp size={20} color="#3B5BFF" />,
+                title: 'Scenario Simulation',
+                desc: 'Model the exact quality score and financial impact of proposed nurse staffing or protocol changes before committing budget.',
+              },
+              {
                 icon: <BarChart3 size={20} color="#3B5BFF" />,
                 title: 'Composite Quality Index',
                 desc: 'Outcome, structure, process, and experience scores rolled up into a unified weighted clinical grade, updated live against CMS records.',
@@ -959,11 +975,6 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
                 icon: <Stethoscope size={20} color="#3B5BFF" />,
                 title: 'Quality Diagnostics',
                 desc: 'Drill into individual indicators — 30-day mortality, staffing ratios, or readmissions — and trace exactly what is driving score fluctuations.',
-              },
-              {
-                icon: <TrendingUp size={20} color="#3B5BFF" />,
-                title: 'Scenario Simulation',
-                desc: 'Model the exact quality score and financial impact of proposed nurse staffing or protocol changes before committing budget.',
               },
             ].map((c) => (
               <div key={c.title} className="lp-cap-card">

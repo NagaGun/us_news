@@ -105,6 +105,7 @@ export default function App() {
     ).length;
   }, [activeValues, selectedDept]);
 
+
   // Landing page — full bleed, no sidebar/topbar
   if (activeTab === 'landing') {
     return <LandingPage onEnterApp={() => setActiveTab('home')} />;

@@ -16,13 +16,14 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
   // --- OUTCOME ---
   {
     id: 'mortality_survival',
-    name: 'Mortality Survival Index',
+    name: 'Number of Deaths',
     category: 'Outcome',
-    description: 'Risk-adjusted mortality survival rate representing avoidable mortality events compared to baseline standards.',
-    unit: '%',
-    min: 75,
-    max: 100,
+    description: 'Risk-adjusted number of avoidable inpatient deaths per quarter. Lower values indicate better clinical performance and fewer preventable outcomes.',
+    unit: '#',
+    min: 0,
+    max: 50,
     weightInCategory: 60,
+    inverted: true, // Fewer deaths = better score
   },
   {
     id: 'discharge_home',
@@ -49,10 +50,10 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
     id: 'advanced_tech',
     name: 'Advanced Tech Adoption',
     category: 'Structure',
-    description: 'Availability of state-of-the-art diagnostic, surgical, and therapeutic technologies in the department.',
-    unit: '/100',
-    min: 40,
-    max: 100,
+    description: 'Whether the department has adopted state-of-the-art diagnostic, surgical, and therapeutic technologies.',
+    unit: 'boolean',
+    min: 0,
+    max: 1,
     weightInCategory: 15,
   },
   {
@@ -99,10 +100,10 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
     id: 'trauma_readiness',
     name: 'Trauma Center Readiness',
     category: 'Structure',
-    description: 'Department capacity to handle extreme emergency trauma transfers and critical clinical interventions.',
-    unit: '/100',
-    min: 30,
-    max: 100,
+    description: 'Whether the department is certified and equipped to handle extreme emergency trauma transfers and critical interventions.',
+    unit: 'boolean',
+    min: 0,
+    max: 1,
     weightInCategory: 10,
   },
   // --- PROCESS ---
@@ -168,18 +169,18 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'ShieldAlert',
     description: 'Comprehensive oncology and bone marrow transplant clinical services, oncology nursing, and precision diagnostics.',
     metrics: {
-      mortality_survival: 91.5,   // Statewide target: 93.0 (Underperforming)
-      discharge_home: 78.0,      // Statewide target: 82.0 (Underperforming)
-      patient_volume: 850,       // Statewide target: 700 (Outperforming)
-      advanced_tech: 85,         // Statewide target: 75 (Outperforming)
-      nurse_staffing: 2.8,       // Statewide target: 3.2 (Underperforming)
-      nurse_magnet: 82,          // Statewide target: 80 (Outperforming)
-      intensivists: 16,          // Statewide target: 18 (Underperforming)
-      patient_services: 92,      // Statewide target: 85 (Outperforming)
-      trauma_readiness: 65,      // Statewide target: 70 (Underperforming)
-      specialist_consults: 89.0, // Statewide target: 85.0 (Outperforming)
-      public_transparency: 94,   // Statewide target: 90 (Outperforming)
-      hcahps_experience: 71,     // Statewide target: 75 (Underperforming)
+      mortality_survival: 12,    // # deaths/qtr — statewide target: 10 (slightly over)
+      discharge_home: 78.0,     // Statewide target: 82.0 (Underperforming)
+      patient_volume: 850,      // Statewide target: 700 (Outperforming)
+      advanced_tech: 1,         // Adopted
+      nurse_staffing: 2.8,      // Statewide target: 3.2 (Underperforming)
+      nurse_magnet: 82,         // Statewide target: 80 (Outperforming)
+      intensivists: 16,         // Statewide target: 18 (Underperforming)
+      patient_services: 92,     // Statewide target: 85 (Outperforming)
+      trauma_readiness: 1,      // Certified
+      specialist_consults: 89.0,
+      public_transparency: 94,
+      hcahps_experience: 71,
     },
   },
   {
@@ -188,18 +189,18 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'Heart',
     description: 'Cardiovascular care, advanced surgical valve repairs, heart failure clinics, and coronary interventions.',
     metrics: {
-      mortality_survival: 95.2,   // Statewide target: 94.0 (Outperforming)
-      discharge_home: 84.5,      // Statewide target: 86.0 (Underperforming)
-      patient_volume: 1250,      // Statewide target: 1000 (Outperforming)
-      advanced_tech: 92,         // Statewide target: 85 (Outperforming)
-      nurse_staffing: 3.0,       // Statewide target: 3.5 (Underperforming)
-      nurse_magnet: 88,          // Statewide target: 85 (Outperforming)
-      intensivists: 20,          // Statewide target: 18 (Outperforming)
-      patient_services: 78,      // Statewide target: 80 (Underperforming)
-      trauma_readiness: 90,      // Statewide target: 85 (Outperforming)
-      specialist_consults: 82.0, // Statewide target: 88.0 (Underperforming)
-      public_transparency: 72,   // Statewide target: 80 (Underperforming)
-      hcahps_experience: 68,     // Statewide target: 76 (Underperforming)
+      mortality_survival: 6,     // # deaths/qtr — statewide target: 8 (outperforming)
+      discharge_home: 84.5,
+      patient_volume: 1250,
+      advanced_tech: 1,          // Adopted
+      nurse_staffing: 3.0,
+      nurse_magnet: 88,
+      intensivists: 20,
+      patient_services: 78,
+      trauma_readiness: 1,       // Certified
+      specialist_consults: 82.0,
+      public_transparency: 72,
+      hcahps_experience: 68,
     },
   },
   {
@@ -208,18 +209,18 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'Activity',
     description: 'Gastroenterology, digestive organ disorders, robotic GI surgery, and metabolic clinical pathways.',
     metrics: {
-      mortality_survival: 96.0,   // Statewide target: 95.0 (Outperforming)
-      discharge_home: 89.0,      // Statewide target: 87.0 (Outperforming)
-      patient_volume: 520,       // Statewide target: 600 (Underperforming)
-      advanced_tech: 70,         // Statewide target: 78 (Underperforming)
-      nurse_staffing: 2.1,       // Statewide target: 2.5 (Underperforming)
-      nurse_magnet: 74,          // Statewide target: 80 (Underperforming)
-      intensivists: 12,          // Statewide target: 12 (Met)
-      patient_services: 85,      // Statewide target: 80 (Outperforming)
-      trauma_readiness: 55,      // Statewide target: 60 (Underperforming)
-      specialist_consults: 91.0, // Statewide target: 85.0 (Outperforming)
-      public_transparency: 88,   // Statewide target: 85 (Outperforming)
-      hcahps_experience: 82,     // Statewide target: 78 (Outperforming)
+      mortality_survival: 5,     // # deaths/qtr — statewide target: 7 (outperforming)
+      discharge_home: 89.0,
+      patient_volume: 520,
+      advanced_tech: 0,          // Not adopted
+      nurse_staffing: 2.1,
+      nurse_magnet: 74,
+      intensivists: 12,
+      patient_services: 85,
+      trauma_readiness: 0,       // Not certified
+      specialist_consults: 91.0,
+      public_transparency: 88,
+      hcahps_experience: 82,
     },
   },
   {
@@ -228,18 +229,18 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'Thermometer',
     description: 'Diabetes clinical centers, metabolic diagnostics, endocrine system malignancies, and hormonal research.',
     metrics: {
-      mortality_survival: 97.8,   // Statewide target: 97.0 (Outperforming)
-      discharge_home: 92.0,      // Statewide target: 91.0 (Outperforming)
-      patient_volume: 380,       // Statewide target: 450 (Underperforming)
-      advanced_tech: 60,         // Statewide target: 70 (Underperforming)
-      nurse_staffing: 1.8,       // Statewide target: 2.2 (Underperforming)
-      nurse_magnet: 85,          // Statewide target: 80 (Outperforming)
-      intensivists: 8,           // Statewide target: 10 (Underperforming)
-      patient_services: 94,      // Statewide target: 85 (Outperforming)
-      trauma_readiness: 40,      // Statewide target: 50 (Underperforming)
-      specialist_consults: 76.0, // Statewide target: 82.0 (Underperforming)
-      public_transparency: 90,   // Statewide target: 85 (Outperforming)
-      hcahps_experience: 79,     // Statewide target: 77 (Outperforming)
+      mortality_survival: 3,     // # deaths/qtr — statewide target: 5 (outperforming)
+      discharge_home: 92.0,
+      patient_volume: 380,
+      advanced_tech: 0,          // Not adopted
+      nurse_staffing: 1.8,
+      nurse_magnet: 85,
+      intensivists: 8,
+      patient_services: 94,
+      trauma_readiness: 0,       // Not certified
+      specialist_consults: 76.0,
+      public_transparency: 90,
+      hcahps_experience: 79,
     },
   },
   {
@@ -248,18 +249,18 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'Sparkles',
     description: 'Multi-specialty orphan disease diagnostic units, dermatology, immunology, and rare syndrome management.',
     metrics: {
-      mortality_survival: 92.0,   // Statewide target: 94.0 (Underperforming)
-      discharge_home: 80.0,      // Statewide target: 85.0 (Underperforming)
-      patient_volume: 310,       // Statewide target: 300 (Outperforming)
-      advanced_tech: 95,         // Statewide target: 85 (Outperforming)
-      nurse_staffing: 3.4,       // Statewide target: 3.0 (Outperforming)
-      nurse_magnet: 91,          // Statewide target: 85 (Outperforming)
-      intensivists: 24,          // Statewide target: 20 (Outperforming)
-      patient_services: 96,      // Statewide target: 88 (Outperforming)
-      trauma_readiness: 78,      // Statewide target: 80 (Underperforming)
-      specialist_consults: 94.0, // Statewide target: 90.0 (Outperforming)
-      public_transparency: 65,   // Statewide target: 80 (Underperforming)
-      hcahps_experience: 70,     // Statewide target: 76 (Underperforming)
+      mortality_survival: 9,     // # deaths/qtr — statewide target: 8 (slightly over)
+      discharge_home: 80.0,
+      patient_volume: 310,
+      advanced_tech: 1,          // Adopted
+      nurse_staffing: 3.4,
+      nurse_magnet: 91,
+      intensivists: 24,
+      patient_services: 96,
+      trauma_readiness: 1,       // Certified
+      specialist_consults: 94.0,
+      public_transparency: 65,
+      hcahps_experience: 70,
     },
   },
   {
@@ -268,18 +269,18 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'Brain',
     description: 'Stroke response intervention units, epilepsy monitoring, neurosurgery, and neurodegenerative therapeutics.',
     metrics: {
-      mortality_survival: 89.5,   // Statewide target: 91.0 (Underperforming)
-      discharge_home: 74.0,      // Statewide target: 78.0 (Underperforming)
-      patient_volume: 680,       // Statewide target: 600 (Outperforming)
-      advanced_tech: 88,         // Statewide target: 80 (Outperforming)
-      nurse_staffing: 2.9,       // Statewide target: 3.2 (Underperforming)
-      nurse_magnet: 80,          // Statewide target: 82 (Underperforming)
-      intensivists: 18,          // Statewide target: 16 (Outperforming)
-      patient_services: 82,      // Statewide target: 84 (Underperforming)
-      trauma_readiness: 85,      // Statewide target: 80 (Outperforming)
-      specialist_consults: 85.0, // Statewide target: 88.0 (Underperforming)
-      public_transparency: 92,   // Statewide target: 85 (Outperforming)
-      hcahps_experience: 72,     // Statewide target: 75 (Underperforming)
+      mortality_survival: 16,    // # deaths/qtr — statewide target: 12 (underperforming)
+      discharge_home: 74.0,
+      patient_volume: 680,
+      advanced_tech: 1,          // Adopted
+      nurse_staffing: 2.9,
+      nurse_magnet: 80,
+      intensivists: 18,
+      patient_services: 82,
+      trauma_readiness: 1,       // Certified
+      specialist_consults: 85.0,
+      public_transparency: 92,
+      hcahps_experience: 72,
     },
   },
   {
@@ -288,15 +289,15 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'Wind',
     description: 'Pulmonary medicine, chronic obstructive disease therapy, mechanical ventilator weaning, and asthma clinics.',
     metrics: {
-      mortality_survival: 93.0,
+      mortality_survival: 11,    // # deaths/qtr
       discharge_home: 81.0,
       patient_volume: 950,
-      advanced_tech: 75,
+      advanced_tech: 1,          // Adopted
       nurse_staffing: 2.4,
       nurse_magnet: 78,
       intensivists: 14,
       patient_services: 80,
-      trauma_readiness: 70,
+      trauma_readiness: 0,       // Not certified
       specialist_consults: 88.0,
       public_transparency: 80,
       hcahps_experience: 74,
@@ -308,15 +309,15 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'Bone',
     description: 'Joint replacement centers, spine surgical pathways, sports medicine, trauma rehabilitation, and rheumatology.',
     metrics: {
-      mortality_survival: 96.8,
+      mortality_survival: 4,     // # deaths/qtr
       discharge_home: 88.5,
       patient_volume: 1100,
-      advanced_tech: 90,
+      advanced_tech: 1,          // Adopted
       nurse_staffing: 2.9,
       nurse_magnet: 85,
       intensivists: 12,
       patient_services: 86,
-      trauma_readiness: 80,
+      trauma_readiness: 1,       // Certified
       specialist_consults: 90.0,
       public_transparency: 92,
       hcahps_experience: 81,
@@ -328,15 +329,15 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'Activity',
     description: 'Kidney disease management, robotic prostate surgery, urologic oncology, and inpatient hemodialysis clinical pathways.',
     metrics: {
-      mortality_survival: 95.0,
+      mortality_survival: 8,     // # deaths/qtr
       discharge_home: 86.0,
       patient_volume: 640,
-      advanced_tech: 88,
+      advanced_tech: 1,          // Adopted
       nurse_staffing: 2.6,
       nurse_magnet: 82,
       intensivists: 14,
       patient_services: 88,
-      trauma_readiness: 65,
+      trauma_readiness: 0,       // Not certified
       specialist_consults: 87.0,
       public_transparency: 89,
       hcahps_experience: 78,
@@ -348,15 +349,15 @@ export const DEPARTMENTS: DepartmentData[] = [
     iconName: 'Users',
     description: 'Comprehensive acute senior care units, memory disorders, inpatient frailty assessment, and palliative clinical medicine.',
     metrics: {
-      mortality_survival: 91.0,
+      mortality_survival: 14,    // # deaths/qtr
       discharge_home: 72.0,
       patient_volume: 890,
-      advanced_tech: 72,
+      advanced_tech: 0,          // Not adopted
       nurse_staffing: 3.2,
       nurse_magnet: 88,
       intensivists: 16,
       patient_services: 95,
-      trauma_readiness: 55,
+      trauma_readiness: 1,       // Certified
       specialist_consults: 93.0,
       public_transparency: 94,
       hcahps_experience: 83,
@@ -366,15 +367,15 @@ export const DEPARTMENTS: DepartmentData[] = [
 
 // Reference standard/baseline targets used before applying the Peer Group target modifier
 export const BASELINE_TARGETS: { [metricId: string]: number } = {
-  mortality_survival: 93.5,
+  mortality_survival: 8,    // Target: 8 deaths/qtr or fewer (lower is better)
   discharge_home: 83.0,
   patient_volume: 650,
-  advanced_tech: 80,
+  advanced_tech: 1,         // Target: adopted (1 = yes)
   nurse_staffing: 2.8,
   nurse_magnet: 80,
   intensivists: 16,
   patient_services: 82,
-  trauma_readiness: 75,
+  trauma_readiness: 1,      // Target: certified (1 = yes)
   specialist_consults: 85.0,
   public_transparency: 82,
   hcahps_experience: 75,
