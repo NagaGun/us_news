@@ -13,7 +13,6 @@ interface SidebarProps {
 
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const navItems = [
-    { id: 'landing', name: 'Landing Page', icon: Globe2, badge: null },
     { id: 'home', name: 'Home', icon: Home, badge: null },
     { id: 'hospitals', name: 'Hospitals', icon: Building2, badge: 'New' },
     { id: 'compare', name: 'Quality / Compare', icon: ArrowLeftRight, badge: null },

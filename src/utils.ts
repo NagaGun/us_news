@@ -16,6 +16,13 @@ export function getNormalizedScore(metric: MetricDefinition, value: number): num
     // Boolean: 1 = adopted/yes = 100, 0 = not adopted/no = 0
     return value >= 0.5 ? 100 : 0;
   }
+  if (metric.unit === 'checkboxes') {
+    // Checkbox adoption is represented as a percentage of selected capabilities.
+    // Use a compressed scoring curve so partial adoption does not overly deflate the overall score.
+    const normalizedFraction = Math.max(0, Math.min(100, value)) / 100;
+    const adjusted = 40 + normalizedFraction * 60;
+    return Math.max(0, Math.min(100, adjusted));
+  }
   if (min === max) return 50;
   if (inverted) {
     // Lower value = better: invert the scale
@@ -61,6 +68,9 @@ export function getVariance(value: number, target: number, inverted?: boolean): 
 export function formatMetricValue(value: number, unit: string): string {
   if (unit === 'boolean') {
     return value >= 0.5 ? 'Yes' : 'No';
+  }
+  if (unit === 'checkboxes') {
+    return `${value.toFixed(0)}%`;
   }
   if (unit === '#') {
     return `${Math.round(value)} deaths`;

@@ -12,7 +12,7 @@ import ChatWidget from './components/ChatWidget';
 import CompareView from './components/CompareView';
 import LandingPage from './components/LandingPage';
 
-import { PEER_GROUPS, DEPARTMENTS, BASELINE_TARGETS } from './data';
+import { PEER_GROUPS, DEPARTMENTS, BASELINE_TARGETS, ADVANCED_TECH_ITEMS } from './data';
 import { calculateScores } from './utils';
 import { PeerGroup, DepartmentData } from './types';
 import {
@@ -46,10 +46,23 @@ export default function App() {
     return states;
   });
 
+  const [advancedTechSelections, setAdvancedTechSelections] = useState<{ [deptId: string]: string[] }>(() => {
+    const selections: { [deptId: string]: string[] } = {};
+    DEPARTMENTS.forEach((dept) => {
+      selections[dept.id] = dept.metrics.advanced_tech === 100 ? [...ADVANCED_TECH_ITEMS] : [];
+    });
+    return selections;
+  });
+
   // Get active simulated values for the selected department
   const activeValues = useMemo(() => {
-    return simulatedStates[selectedDept.id] || { ...selectedDept.metrics };
-  }, [simulatedStates, selectedDept]);
+    const baseValues = simulatedStates[selectedDept.id] || { ...selectedDept.metrics };
+    const selectedItems = advancedTechSelections[selectedDept.id] || [];
+    return {
+      ...baseValues,
+      advanced_tech: (selectedItems.length / ADVANCED_TECH_ITEMS.length) * 100,
+    };
+  }, [simulatedStates, selectedDept, advancedTechSelections]);
 
   // Pass 1: Calculate BASELINE scores (Before simulation)
   const baselineCalculation = useMemo(() => {
@@ -72,12 +85,41 @@ export default function App() {
     }));
   };
 
+  const handleAdvancedTechToggle = (item: string) => {
+    setAdvancedTechSelections((prev) => {
+      const current = prev[selectedDept.id] || [];
+      const next = current.includes(item)
+        ? current.filter((i) => i !== item)
+        : [...current, item];
+
+      return {
+        ...prev,
+        [selectedDept.id]: next,
+      };
+    });
+  };
+
+  const handleAdvancedTechSetAll = () => {
+    setAdvancedTechSelections((prev) => ({
+      ...prev,
+      [selectedDept.id]: [...ADVANCED_TECH_ITEMS],
+    }));
+  };
+
+  const handleAdvancedTechReset = () => {
+    setAdvancedTechSelections((prev) => ({
+      ...prev,
+      [selectedDept.id]: selectedDept.metrics.advanced_tech === 100 ? [...ADVANCED_TECH_ITEMS] : [],
+    }));
+  };
+
   // Reset simulation for active department back to standard baseline
   const handleResetActiveDeptSimulation = () => {
     setSimulatedStates((prev) => ({
       ...prev,
       [selectedDept.id]: { ...selectedDept.metrics },
     }));
+    handleAdvancedTechReset();
     setActiveSimulationId(null);
   };
 
@@ -139,6 +181,9 @@ export default function App() {
               <CompareView
                 selectedDept={selectedDept}
                 setSelectedDept={setSelectedDept}
+                simulatedMetrics={activeValues}
+                isSimulated={isSimulated}
+                onResetSimulation={handleResetActiveDeptSimulation}
               />
             ) : activeTab === 'home' ? (
               <div className="space-y-6">
@@ -199,6 +244,11 @@ export default function App() {
                   activeSimulationId={activeSimulationId}
                   setActiveSimulationId={setActiveSimulationId}
                   onSimulationValueChange={handleSimulationValueChange}
+                  advancedTechItems={ADVANCED_TECH_ITEMS}
+                  advancedTechSelection={advancedTechSelections[selectedDept.id] || []}
+                  onAdvancedTechToggle={handleAdvancedTechToggle}
+                  onAdvancedTechSetAll={handleAdvancedTechSetAll}
+                  onAdvancedTechReset={handleAdvancedTechReset}
                   baselineMetrics={selectedDept.metrics}
                   categoryScoresBefore={baselineCalculation.categoryScores}
                   categoryScoresAfter={simulatedCalculation.categoryScores}

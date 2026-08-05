@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { DepartmentData } from '../types';
+import { DepartmentData, MetricDefinition } from '../types';
 import { DEPARTMENTS, METRIC_DEFINITIONS, BASELINE_TARGETS } from '../data';
 import { PEER_HOSPITALS_POOL, PeerHospital, calculateHospitalCategoryScores } from '../data/mockPeerData';
 import { formatMetricValue } from '../utils';
@@ -13,9 +13,12 @@ import { Plus, X, Info, TrendingUp, TrendingDown, ArrowUp, ArrowDown } from 'luc
 interface CompareViewProps {
   selectedDept: DepartmentData;
   setSelectedDept: (dept: DepartmentData) => void;
+  simulatedMetrics?: { [metricId: string]: number };
+  isSimulated: boolean;
+  onResetSimulation: () => void;
 }
 
-export default function CompareView({ selectedDept, setSelectedDept }: CompareViewProps) {
+export default function CompareView({ selectedDept, setSelectedDept, simulatedMetrics, isSimulated, onResetSimulation }: CompareViewProps) {
   const MY_COLOR = '#1E3A8A'; // Dark Blue
   const PEER_COLORS = [
     '#059669', // Emerald
@@ -62,10 +65,53 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
     setIsAddPeerOpen(false);
   };
 
+  const myMetrics = simulatedMetrics ?? selectedDept.metrics;
+
+  const stimulatedMetricIds = useMemo(() => {
+    if (!isSimulated || !simulatedMetrics) return [];
+    return METRIC_DEFINITIONS.filter((metric) => {
+      const baselineValue = selectedDept.metrics[metric.id] ?? metric.min;
+      const activeValue = simulatedMetrics[metric.id] ?? baselineValue;
+      return activeValue !== baselineValue;
+    }).map((metric) => metric.id);
+  }, [isSimulated, selectedDept.metrics, simulatedMetrics]);
+
+  const getStimulatedMetricSummary = (metric: MetricDefinition, baselineValue: number, activeValue: number) => {
+    const formattedBaseline = formatMetricValue(baselineValue, metric.unit);
+    const formattedActive = formatMetricValue(activeValue, metric.unit);
+    const formattedTarget = formatMetricValue(BASELINE_TARGETS[metric.id] ?? metric.min, metric.unit);
+
+    const isImproving = metric.inverted ? activeValue < baselineValue : activeValue > baselineValue;
+
+    if (metric.unit === 'checkboxes') {
+      if (isImproving) {
+        return `Add more advanced tech capabilities to raise adoption from ${formattedBaseline} to ${formattedActive}.`;
+      }
+      return `This simulation reduces advanced tech adoption; target is ${formattedTarget}.`;
+    }
+
+    if (metric.unit === 'boolean') {
+      if (activeValue >= 0.5) {
+        return `Adopt this capability to improve the metric score and structure performance.`;
+      }
+      return `Remove this capability only if you want to lower the related score.`;
+    }
+
+    if (isImproving) {
+      return metric.inverted
+        ? `Reduce ${metric.name.toLowerCase()} from ${formattedBaseline} to ${formattedActive} to improve your score.`
+        : `Increase ${metric.name.toLowerCase()} from ${formattedBaseline} to ${formattedActive} to improve your score.`;
+    }
+
+    return metric.inverted
+      ? `This change increases ${metric.name.toLowerCase()} away from the ideal target of ${formattedTarget}.`
+      : `This change lowers ${metric.name.toLowerCase()} away from the ideal target of ${formattedTarget}.`;
+  };
+
   // Calculate Metropolitan Hospital category scores for current selected department
   const myCategoryScores = useMemo(() => {
-    return calculateHospitalCategoryScores(selectedDept.metrics);
-  }, [selectedDept]);
+    return calculateHospitalCategoryScores(myMetrics);
+  }, [myMetrics]);
 
   // Calculate Category Scores for each selected peer hospital under current department
   const peersCategoryScores = useMemo(() => {
@@ -144,6 +190,22 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
           <p className="text-xs md:text-sm text-slate-500 max-w-2xl mt-1 leading-relaxed">
             Metropolitan Hospital measured against the peer hospitals selected below. Arrows show the difference versus your score for each metric.
           </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
+            {isSimulated ? 'Simulated values active' : 'Live baseline view'}
+          </div>
+          <button
+            onClick={onResetSimulation}
+            disabled={!isSimulated}
+            className={`text-[12px] font-semibold rounded-full px-3 py-2 transition ${isSimulated
+              ? 'bg-blue-500 text-white shadow-sm hover:bg-blue-400'
+              : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            Reset Simulation
+          </button>
         </div>
 
         {/* Dropdowns & Peer Chips */}
@@ -392,21 +454,37 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredMetrics.map((metric) => {
-                const myValue = selectedDept.metrics[metric.id] ?? metric.min;
+                const myValue = myMetrics[metric.id] ?? metric.min;
 
                 return (
-                  <tr key={metric.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr
+                  key={metric.id}
+                  className={`transition-colors ${stimulatedMetricIds.includes(metric.id) ? 'bg-slate-50/70 border-l-4 border-blue-200' : 'hover:bg-slate-50/50'}`}
+                >
                     {/* Metric Name */}
                     <td className="py-3.5 px-3 text-xs md:text-sm font-semibold text-slate-900">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: getCategoryDotColor(metric.category) }}
-                        ></span>
-                        <span>{metric.name}</span>
-                      </div>
-                    </td>
-
+<div className="flex items-center gap-2 justify-center md:justify-start">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getCategoryDotColor(metric.category) }}
+                      ></span>
+                      <span>{metric.name}</span>
+                      {stimulatedMetricIds.includes(metric.id) && (
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.15em] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                          Simulated
+                        </span>
+                      )}
+                    </div>
+                    {stimulatedMetricIds.includes(metric.id) && (
+                      <p className="mt-2 text-[10px] text-slate-500 leading-snug">
+                        {getStimulatedMetricSummary(
+                          metric,
+                          selectedDept.metrics[metric.id] ?? metric.min,
+                          myValue
+                        )}
+                      </p>
+                    )}
+                  </td>
                     {/* Your Hospital Value */}
                     <td className="py-3.5 px-3 text-center text-xs md:text-sm font-bold text-slate-900 font-mono">
                       {formatMetricValue(myValue, metric.unit)}
@@ -422,6 +500,8 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
                       const isPeerHigher = rawDelta > 0;
                       const isPeerLower = rawDelta < 0;
                       const absDelta = Math.abs(rawDelta);
+                      const peerBetter = metric.inverted ? isPeerLower : isPeerHigher;
+                      const peerWorse = metric.inverted ? isPeerHigher : isPeerLower;
 
                       const formattedPeerVal = formatMetricValue(peerVal, metric.unit);
                       const formattedDeltaStr =
@@ -430,6 +510,12 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
                           : metric.unit === 'FTE'
                           ? `${absDelta.toFixed(2)}`
                           : `${absDelta.toFixed(0)}`;
+
+                      const arrowClass = peerBetter
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                        : peerWorse
+                        ? 'bg-rose-50 text-rose-700 border border-rose-100'
+                        : 'bg-slate-100 text-slate-500 border border-slate-200';
 
                       return (
                         <td key={peer.id} className="py-3.5 px-3 text-center">
@@ -440,14 +526,13 @@ export default function CompareView({ selectedDept, setSelectedDept }: CompareVi
 
                             {/* Arrow Pill */}
                             <span
-                              className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md font-mono"
-                              style={{ color: peerColor, backgroundColor: `${peerColor}1A` }}
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md font-mono ${arrowClass}`}
                             >
-                              {isPeerHigher ? (
+                              {peerBetter ? (
                                 <>
                                   <ArrowUp className="w-3 h-3" /> +{formattedDeltaStr}
                                 </>
-                              ) : isPeerLower ? (
+                              ) : peerWorse ? (
                                 <>
                                   <ArrowDown className="w-3 h-3" /> -{formattedDeltaStr}
                                 </>

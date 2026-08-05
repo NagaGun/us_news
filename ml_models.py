@@ -2,6 +2,8 @@
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+from sklearn.model_selection import train_test_split
 
 # DATA GENERATION + Simulating historical state registry data for 100 Bay Area hospitals
 np.random.seed(42)
@@ -106,3 +108,98 @@ def predict_all_submetrics(current_state):
         "public_transparency": current_state["public_transparency"], # Kept static as independent
         "hcahps_score": round(min(100.0, predicted_hcahps), 1)
     }
+
+
+def evaluate_models(test_size=0.25, random_state=42):
+    """Train/test split and print R² for each ML model."""
+    results = []
+
+    # Outcome models
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_outcomes,
+        mortality_noise,
+        test_size=test_size,
+        random_state=random_state,
+    )
+    mortality_eval = RandomForestRegressor(n_estimators=50, random_state=random_state)
+    mortality_eval.fit(X_train, y_train)
+    mortality_pred = mortality_eval.predict(X_test)
+    results.append(("mortality", r2_score(y_test, mortality_pred)))
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_outcomes,
+        discharge_noise,
+        test_size=test_size,
+        random_state=random_state,
+    )
+    discharge_eval = RandomForestRegressor(n_estimators=50, random_state=random_state)
+    discharge_eval.fit(X_train, y_train)
+    discharge_pred = discharge_eval.predict(X_test)
+    results.append(("discharge", r2_score(y_test, discharge_pred)))
+
+    # Structure models
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_structure,
+        tech_adoption_scores,
+        test_size=test_size,
+        random_state=random_state,
+    )
+    tech_eval = RandomForestRegressor(n_estimators=50, random_state=random_state)
+    tech_eval.fit(X_train, y_train)
+    tech_pred = tech_eval.predict(X_test)
+    results.append(("advanced_tech_adoption", r2_score(y_test, tech_pred)))
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_structure,
+        services_diversity_scores,
+        test_size=test_size,
+        random_state=random_state,
+    )
+    services_eval = RandomForestRegressor(n_estimators=50, random_state=random_state)
+    services_eval.fit(X_train, y_train)
+    services_pred = services_eval.predict(X_test)
+    results.append(("patient_services_diversity", r2_score(y_test, services_pred)))
+
+    # Process models
+    X_train, X_test, y_train, y_test = train_test_split(
+        volumes.reshape(-1, 1),
+        raw_staffing_ratios,
+        test_size=test_size,
+        random_state=random_state,
+    )
+    staffing_eval = LinearRegression()
+    staffing_eval.fit(X_train, y_train)
+    staffing_pred = staffing_eval.predict(X_test)
+    results.append(("nurse_staffing_ratio", r2_score(y_test, staffing_pred)))
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        volumes.reshape(-1, 1),
+        expert_consult_rates,
+        test_size=test_size,
+        random_state=random_state,
+    )
+    consults_eval = LinearRegression()
+    consults_eval.fit(X_train, y_train)
+    consults_pred = consults_eval.predict(X_test)
+    results.append(("expert_consults", r2_score(y_test, consults_pred)))
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        raw_staffing_ratios.reshape(-1, 1),
+        hcahps_scores,
+        test_size=test_size,
+        random_state=random_state,
+    )
+    hcahps_eval = LinearRegression()
+    hcahps_eval.fit(X_train, y_train)
+    hcahps_pred = hcahps_eval.predict(X_test)
+    results.append(("hcahps_score", r2_score(y_test, hcahps_pred)))
+
+    print("Model evaluation results (R² on test split):")
+    for name, score in results:
+        print(f" - {name}: {score:.3f}")
+
+    return {name: score for name, score in results}
+
+
+if __name__ == "__main__":
+    evaluate_models()

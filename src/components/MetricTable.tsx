@@ -32,6 +32,11 @@ interface MetricTableProps {
   setActiveSimulationId: (id: string | null) => void;
   // Extra props for inline simulation and ledger integration:
   onSimulationValueChange?: (metricId: string, value: number) => void;
+  advancedTechItems?: string[];
+  advancedTechSelection?: string[];
+  onAdvancedTechToggle?: (item: string) => void;
+  onAdvancedTechSetAll?: () => void;
+  onAdvancedTechReset?: () => void;
   baselineMetrics?: { [metricId: string]: number };
   categoryScoresBefore?: { [category: string]: number };
   categoryScoresAfter?: { [category: string]: number };
@@ -44,6 +49,11 @@ export default function MetricTable({
   activeSimulationId,
   setActiveSimulationId,
   onSimulationValueChange,
+  advancedTechItems,
+  advancedTechSelection,
+  onAdvancedTechToggle,
+  onAdvancedTechSetAll,
+  onAdvancedTechReset,
   baselineMetrics,
   categoryScoresBefore,
   categoryScoresAfter,
@@ -104,13 +114,27 @@ export default function MetricTable({
 
   // Preset Handlers for Selected Metric Simulation
   const handleSetToTarget = () => {
-    if (selectedRow && onSimulationValueChange) {
+    if (!selectedRow) return;
+
+    if (selectedRow.metric.unit === 'checkboxes') {
+      onAdvancedTechSetAll?.();
+      return;
+    }
+
+    if (onSimulationValueChange) {
       onSimulationValueChange(selectedRow.metric.id, selectedRow.peerTarget);
     }
   };
 
   const handleReset = () => {
-    if (selectedRow && onSimulationValueChange && baselineMetrics) {
+    if (!selectedRow) return;
+
+    if (selectedRow.metric.unit === 'checkboxes') {
+      onAdvancedTechReset?.();
+      return;
+    }
+
+    if (onSimulationValueChange && baselineMetrics) {
       const originalValue = baselineMetrics[selectedRow.metric.id];
       if (originalValue !== undefined) {
         onSimulationValueChange(selectedRow.metric.id, originalValue);
@@ -326,29 +350,51 @@ export default function MetricTable({
                     </div>
 
                     {onSimulationValueChange && (
-                      m.unit === 'boolean' ? (
-                        /* Boolean toggle: Yes / No buttons */
-                        <div className="flex gap-2 mt-2">
-                          <button
-                            onClick={() => onSimulationValueChange(m.id, 1)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-extrabold transition-all border cursor-pointer ${
-                              simulatedValue >= 0.5
-                                ? 'bg-emerald-500 text-white border-emerald-400 shadow-sm'
-                                : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
-                            }`}
-                          >
-                            ✓ Yes — Adopted
-                          </button>
-                          <button
-                            onClick={() => onSimulationValueChange(m.id, 0)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-extrabold transition-all border cursor-pointer ${
-                              simulatedValue < 0.5
-                                ? 'bg-rose-500 text-white border-rose-400 shadow-sm'
-                                : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
-                            }`}
-                          >
-                            ✗ No — Not Adopted
-                          </button>
+                      m.unit === 'checkboxes' ? (
+                        <div className="space-y-2 mt-3 bg-slate-800/80 rounded-xl p-3 border border-slate-700 text-slate-100">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300 mb-2">
+                            Advanced tech capabilities
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 text-sm">
+                            {advancedTechItems?.map((item) => {
+                              const checked = advancedTechSelection?.includes(item);
+                              return (
+                                <label
+                                  key={item}
+                                  className="flex items-center gap-3 p-2 rounded-xl border border-slate-700 bg-slate-900/90 hover:border-slate-500 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => onAdvancedTechToggle?.(item)}
+                                    className="h-4 w-4 accent-blue-400 rounded"
+                                  />
+                                  <span className="text-[11px] leading-tight">
+                                    {item}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-700">
+                            <span className="text-[10px] text-slate-400">
+                              Each selected capability contributes incrementally to the advanced tech score.
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={onAdvancedTechSetAll}
+                                className="text-[10px] px-2 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-400 transition"
+                              >
+                                Select all
+                              </button>
+                              <button
+                                onClick={onAdvancedTechReset}
+                                className="text-[10px] px-2 py-1 rounded-md bg-slate-700 text-slate-100 hover:bg-slate-600 transition"
+                              >
+                                Reset
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ) : (
                         <input

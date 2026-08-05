@@ -12,6 +12,16 @@ export const CATEGORY_WEIGHTS: CategoryWeights = {
   'Patient Exp': 20,
 };
 
+export const ADVANCED_TECH_ITEMS = [
+  "Ablation of Barrett's esophagus",
+  'Assistive technology center',
+  'Computer tomography CE scanner',
+  'Computer assisted orthopedic surgery',
+  'Diagnostic radioisotope services',
+  'Electrodiagnostic services',
+  'Endoscopic retrograde cholangiopancreatography',
+];
+
 export const METRIC_DEFINITIONS: MetricDefinition[] = [
   // --- OUTCOME ---
   {
@@ -50,10 +60,10 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
     id: 'advanced_tech',
     name: 'Advanced Tech Adoption',
     category: 'Structure',
-    description: 'Whether the department has adopted state-of-the-art diagnostic, surgical, and therapeutic technologies.',
-    unit: 'boolean',
+    description: 'Adoption of specific advanced clinical technologies. Each selected capability contributes incrementally to the department score.',
+    unit: 'checkboxes',
     min: 0,
-    max: 1,
+    max: 100,
     weightInCategory: 15,
   },
   {
@@ -172,7 +182,7 @@ export const DEPARTMENTS: DepartmentData[] = [
       mortality_survival: 12,    // # deaths/qtr — statewide target: 10 (slightly over)
       discharge_home: 78.0,     // Statewide target: 82.0 (Underperforming)
       patient_volume: 850,      // Statewide target: 700 (Outperforming)
-      advanced_tech: 1,         // Adopted
+      advanced_tech: 100,       // Adopted
       nurse_staffing: 2.8,      // Statewide target: 3.2 (Underperforming)
       nurse_magnet: 82,         // Statewide target: 80 (Outperforming)
       intensivists: 16,         // Statewide target: 18 (Underperforming)
@@ -192,7 +202,7 @@ export const DEPARTMENTS: DepartmentData[] = [
       mortality_survival: 6,     // # deaths/qtr — statewide target: 8 (outperforming)
       discharge_home: 84.5,
       patient_volume: 1250,
-      advanced_tech: 1,          // Adopted
+      advanced_tech: 100,          // Adopted
       nurse_staffing: 3.0,
       nurse_magnet: 88,
       intensivists: 20,
@@ -252,7 +262,7 @@ export const DEPARTMENTS: DepartmentData[] = [
       mortality_survival: 9,     // # deaths/qtr — statewide target: 8 (slightly over)
       discharge_home: 80.0,
       patient_volume: 310,
-      advanced_tech: 1,          // Adopted
+      advanced_tech: 100,          // Adopted
       nurse_staffing: 3.4,
       nurse_magnet: 91,
       intensivists: 24,
@@ -272,7 +282,7 @@ export const DEPARTMENTS: DepartmentData[] = [
       mortality_survival: 16,    // # deaths/qtr — statewide target: 12 (underperforming)
       discharge_home: 74.0,
       patient_volume: 680,
-      advanced_tech: 1,          // Adopted
+      advanced_tech: 100,          // Adopted
       nurse_staffing: 2.9,
       nurse_magnet: 80,
       intensivists: 18,
@@ -292,7 +302,7 @@ export const DEPARTMENTS: DepartmentData[] = [
       mortality_survival: 11,    // # deaths/qtr
       discharge_home: 81.0,
       patient_volume: 950,
-      advanced_tech: 1,          // Adopted
+      advanced_tech: 100,          // Adopted
       nurse_staffing: 2.4,
       nurse_magnet: 78,
       intensivists: 14,
@@ -312,7 +322,7 @@ export const DEPARTMENTS: DepartmentData[] = [
       mortality_survival: 4,     // # deaths/qtr
       discharge_home: 88.5,
       patient_volume: 1100,
-      advanced_tech: 1,          // Adopted
+      advanced_tech: 100,          // Adopted
       nurse_staffing: 2.9,
       nurse_magnet: 85,
       intensivists: 12,
@@ -332,7 +342,7 @@ export const DEPARTMENTS: DepartmentData[] = [
       mortality_survival: 8,     // # deaths/qtr
       discharge_home: 86.0,
       patient_volume: 640,
-      advanced_tech: 1,          // Adopted
+      advanced_tech: 100,          // Adopted
       nurse_staffing: 2.6,
       nurse_magnet: 82,
       intensivists: 14,
@@ -370,7 +380,7 @@ export const BASELINE_TARGETS: { [metricId: string]: number } = {
   mortality_survival: 8,    // Target: 8 deaths/qtr or fewer (lower is better)
   discharge_home: 83.0,
   patient_volume: 650,
-  advanced_tech: 1,         // Target: adopted (1 = yes)
+  advanced_tech: 100,       // Target: fully adopted
   nurse_staffing: 2.8,
   nurse_magnet: 80,
   intensivists: 16,

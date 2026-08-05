@@ -32,6 +32,13 @@ export default function MetricCards({
 
   const gradeInfo = getLetterGrade(compositeScore);
 
+  const rangeKeyItems = [
+    { label: 'Critical', range: '0-69', colorClass: 'text-rose-700 bg-rose-50 border-rose-100' },
+    { label: 'Moderate', range: '70-79', colorClass: 'text-amber-700 bg-amber-50 border-amber-100' },
+    { label: 'Good', range: '80-89', colorClass: 'text-blue-700 bg-blue-50 border-blue-100' },
+    { label: 'Excellent', range: '90-100', colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
+  ];
+
   const cards = [
     {
       id: 'overall',
@@ -96,7 +103,22 @@ export default function MetricCards({
   ];
 
   return (
-    <div id="metric-cards-section" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+    <div className="relative">
+      <div className="mb-4 inline-flex items-center gap-2 rounded-xl border border-slate-900/10 bg-white px-3 py-1 text-[10px] text-slate-900 shadow-sm transition group">
+        <span className="font-semibold uppercase tracking-[0.18em] text-[9px]">Score Key</span>
+        <div className="pointer-events-none opacity-0 translate-y-1 scale-95 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 absolute left-0 top-full z-20 mt-2 w-44 rounded-2xl border border-slate-900/10 bg-white p-3 text-[10px] text-slate-700 shadow-lg transition-all duration-200">
+          <div className="text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-500 mb-2">Levels</div>
+          <div className="space-y-2">
+            {rangeKeyItems.map((item) => (
+              <div key={item.label} className={`flex items-center justify-between rounded-xl border px-2 py-1 ${item.colorClass}`}>
+                <span className="text-[9px] font-semibold">{item.label}</span>
+                <span className="text-[9px] font-mono text-slate-700">{item.range}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div id="metric-cards-section" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
       {cards.map((card) => {
         const Icon = card.icon;
         const isHigh = card.score >= 85;
@@ -252,6 +274,7 @@ export default function MetricCards({
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
