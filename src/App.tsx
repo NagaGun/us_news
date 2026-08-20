@@ -11,6 +11,8 @@ import MetricTable from './components/MetricTable';
 import ChatWidget from './components/ChatWidget';
 import CompareView from './components/CompareView';
 import LandingPage from './components/LandingPage';
+import OodBadge from './components/OodBadge';
+import { useBackendSimulation } from './backendSimulation';
 
 import { PEER_GROUPS, DEPARTMENTS, BASELINE_TARGETS, ADVANCED_TECH_ITEMS } from './data';
 import { calculateScores } from './utils';
@@ -36,6 +38,8 @@ export default function App() {
   const [selectedPeerGroup, setSelectedPeerGroup] = useState<PeerGroup>(PEER_GROUPS[1]); // Statewide Avg default
   const [selectedDept, setSelectedDept] = useState<DepartmentData>(DEPARTMENTS[0]); // Cancer default
   const [activeSimulationId, setActiveSimulationId] = useState<string | null>(null);
+
+  const { loading: isBackendSimulating, lastResult: backendResult, runSimulation, resetResult } = useBackendSimulation(selectedDept.id);
 
   // Initialize simulated states for all departments with their default baselines
   const [simulatedStates, setSimulatedStates] = useState<{ [deptId: string]: { [metricId: string]: number } }>(() => {
@@ -69,10 +73,32 @@ export default function App() {
     return calculateScores(selectedDept.metrics, selectedPeerGroup, BASELINE_TARGETS);
   }, [selectedDept, selectedPeerGroup]);
 
-  // Pass 2: Calculate SIMULATED scores (After active adjustments)
+  // Pass 2: Calculate SIMULATED scores (After active adjustments or backend ML forecast)
   const simulatedCalculation = useMemo(() => {
-    return calculateScores(activeValues, selectedPeerGroup, BASELINE_TARGETS);
-  }, [activeValues, selectedPeerGroup]);
+    const baseCalc = calculateScores(activeValues, selectedPeerGroup, BASELINE_TARGETS);
+    if (!backendResult) return baseCalc;
+
+    const mergedResults = baseCalc.metricResults.map((r) => {
+      const feKey = r.metric.id;
+      const backendScore = backendResult.scores[feKey];
+      const backendRaw = backendResult.rawMetrics[feKey];
+      return {
+        ...r,
+        hospitalValue: backendRaw !== undefined ? backendRaw : r.hospitalValue,
+        normalizedHospitalScore: backendScore !== undefined ? backendScore : r.normalizedHospitalScore,
+      };
+    });
+
+    const compositeScore = backendResult.overallComposite !== undefined
+      ? backendResult.overallComposite
+      : baseCalc.compositeScore;
+
+    return {
+      ...baseCalc,
+      metricResults: mergedResults,
+      compositeScore,
+    };
+  }, [activeValues, selectedPeerGroup, backendResult]);
 
   // Handle single slider change during what-if analysis
   const handleSimulationValueChange = (metricId: string, value: number) => {
@@ -206,20 +232,38 @@ export default function App() {
 
                   {/* Simulation Summary Status */}
                   {isSimulated ? (
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3 self-start md:self-auto">
-                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></div>
-                      <div className="text-xs">
-                        <p className="font-bold text-amber-900">
-                          {modifiedCount} simulated {modifiedCount === 1 ? 'variable' : 'variables'} active
-                        </p>
-                        <p className="text-amber-700 text-[10px] mt-0.5">
-                          Rating shifted by{' '}
-                          <span className="font-extrabold font-mono">
-                            {(simulatedCalculation.compositeScore - baselineCalculation.compositeScore).toFixed(1)}
-                          </span>{' '}
-                          composite pts
-                        </p>
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex flex-wrap items-center gap-3 self-start md:self-auto">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></div>
+                        <div className="text-xs">
+                          <p className="font-bold text-amber-900">
+                            {modifiedCount} simulated {modifiedCount === 1 ? 'variable' : 'variables'} active
+                          </p>
+                          <p className="text-amber-700 text-[10px] mt-0.5">
+                            Rating shifted by{' '}
+                            <span className="font-extrabold font-mono">
+                              {(simulatedCalculation.compositeScore - baselineCalculation.compositeScore).toFixed(1)}
+                            </span>{' '}
+                            composite pts
+                          </p>
+                        </div>
                       </div>
+
+                      <button
+                        onClick={() => runSimulation(activeValues)}
+                        disabled={isBackendSimulating}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer ml-auto"
+                      >
+                        {isBackendSimulating ? (
+                          <span className="animate-spin">⏳</span>
+                        ) : (
+                          <span>▶ Run Forecast</span>
+                        )}
+                      </button>
+
+                      {backendResult?.oodAssessment && (
+                        <OodBadge assessment={backendResult.oodAssessment} />
+                      )}
                     </div>
                   ) : (
                     <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center gap-2 text-xs text-slate-500 self-start md:self-auto">

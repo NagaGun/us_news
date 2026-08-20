@@ -7,7 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { DepartmentData, MetricDefinition } from '../types';
 import { DEPARTMENTS, METRIC_DEFINITIONS, BASELINE_TARGETS } from '../data';
 import { PEER_HOSPITALS_POOL, PeerHospital, calculateHospitalCategoryScores } from '../data/mockPeerData';
-import { formatMetricValue } from '../utils';
+import { formatMetricValue, calculateScores } from '../utils';
 import { Plus, X, Info, TrendingUp, TrendingDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface CompareViewProps {
@@ -79,33 +79,41 @@ export default function CompareView({ selectedDept, setSelectedDept, simulatedMe
   const getStimulatedMetricSummary = (metric: MetricDefinition, baselineValue: number, activeValue: number) => {
     const formattedBaseline = formatMetricValue(baselineValue, metric.unit);
     const formattedActive = formatMetricValue(activeValue, metric.unit);
-    const formattedTarget = formatMetricValue(BASELINE_TARGETS[metric.id] ?? metric.min, metric.unit);
+
+    const peerGroupRef = { name: 'Standard', targetModifier: 1.0 } as any;
+    const baseOverallResult = calculateScores(selectedDept.metrics, peerGroupRef, BASELINE_TARGETS);
+    const activeMetricsMap = { ...selectedDept.metrics, [metric.id]: activeValue };
+    const activeOverallResult = calculateScores(activeMetricsMap, peerGroupRef, BASELINE_TARGETS);
+
+    const baseOverall = baseOverallResult.compositeScore;
+    const activeOverall = activeOverallResult.compositeScore;
+    const overallDiff = Math.abs(activeOverall - baseOverall).toFixed(1);
 
     const isImproving = metric.inverted ? activeValue < baselineValue : activeValue > baselineValue;
 
     if (metric.unit === 'checkboxes') {
       if (isImproving) {
-        return `Add more advanced tech capabilities to raise adoption from ${formattedBaseline} to ${formattedActive}.`;
+        return `Adding advanced tech capabilities raises adoption from ${formattedBaseline} to ${formattedActive}, improving your overall score by ${overallDiff}%.`;
       }
-      return `This simulation reduces advanced tech adoption; target is ${formattedTarget}.`;
+      return `Reducing advanced tech adoption from ${formattedBaseline} to ${formattedActive} lowers your overall score by ${overallDiff}%.`;
     }
 
     if (metric.unit === 'boolean') {
       if (activeValue >= 0.5) {
-        return `Adopt this capability to improve the metric score and structure performance.`;
+        return `Adopting this capability improves your overall score by ${overallDiff}%.`;
       }
-      return `Remove this capability only if you want to lower the related score.`;
+      return `Removing this capability lowers your overall score by ${overallDiff}%.`;
     }
 
     if (isImproving) {
       return metric.inverted
-        ? `Reduce ${metric.name.toLowerCase()} from ${formattedBaseline} to ${formattedActive} to improve your score.`
-        : `Increase ${metric.name.toLowerCase()} from ${formattedBaseline} to ${formattedActive} to improve your score.`;
+        ? `Reducing ${metric.name.toLowerCase()} from ${formattedBaseline} to ${formattedActive} improves your overall score by ${overallDiff}%.`
+        : `Increasing ${metric.name.toLowerCase()} from ${formattedBaseline} to ${formattedActive} improves your overall score by ${overallDiff}%.`;
     }
 
     return metric.inverted
-      ? `This change increases ${metric.name.toLowerCase()} away from the ideal target of ${formattedTarget}.`
-      : `This change lowers ${metric.name.toLowerCase()} away from the ideal target of ${formattedTarget}.`;
+      ? `Increasing ${metric.name.toLowerCase()} from ${formattedBaseline} to ${formattedActive} lowers your overall score by ${overallDiff}%.`
+      : `Lowering ${metric.name.toLowerCase()} from ${formattedBaseline} to ${formattedActive} lowers your overall score by ${overallDiff}%.`;
   };
 
   // Calculate Metropolitan Hospital category scores for current selected department

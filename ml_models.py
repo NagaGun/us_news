@@ -1,204 +1,227 @@
 # ml_models.py
+"""
+ML models for hospital metric prediction.
+
+Training data comes from synthetic_augmentor.SYNTHETIC_TRAINING_DATA (60
+per-department synthetic hospitals with realistic joint covariance).
+Models and OOD Guards are trained per department.
+
+CANONICAL KEYS:
+  calculated_smr          – mortality index (lower = better)
+  intensivists_staffing   – ICU specialist staffing level
+"""
+from __future__ import annotations
+
+from typing import Dict, Any
 import numpy as np
+import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split
 
-# DATA GENERATION + Simulating historical state registry data for 100 Bay Area hospitals
+from synthetic_augmentor import SYNTHETIC_TRAINING_DATA, AUGMENTOR_LOAD_ERROR
+from ood_guard import (
+    OodGuard,
+    fit_ood_guard,
+    assess_ood_confidence,
+    nearest_neighbor_fallback,
+)
+
+if AUGMENTOR_LOAD_ERROR:
+    raise ImportError(
+        f"ml_models.py cannot train: synthetic_augmentor.py failed to load — "
+        f"{AUGMENTOR_LOAD_ERROR}"
+    )
+
+# ---------------------------------------------------------------------------
+# Train per-department model suites and OOD Guards
+# ---------------------------------------------------------------------------
+
+DEPARTMENT_MODELS: Dict[str, Dict[str, Any]] = {}
+DEPARTMENT_OOD_GUARDS: Dict[str, OodGuard] = {}
+
 np.random.seed(42)
-num_hospitals = 100
 
-# Continuous Predictor Inputs
-volumes = np.random.randint(500, 2000, size=num_hospitals)
-nurse_headcount = np.random.randint(80, 400, size=num_hospitals)
-icu_beds = np.random.randint(10, 50, size=num_hospitals)
-intensivist_hours = np.random.randint(30, 100, size=num_hospitals)
+for dept_id, df in SYNTHETIC_TRAINING_DATA.items():
+    volumes = df["patient_volume"].values
+    nurse_ratios = df["nurse_staffing_ratio"].values
+    intensivists = df["intensivists_staffing"].values
+    smr = df["calculated_smr"].values
+    discharge = df["discharge_home_rate"].values
+    tech = df["advanced_tech_adoption"].values
+    services = df["patient_services_diversity"].values
+    consults = df["expert_consults"].values
+    hcahps = df["hcahps_score"].values
 
-# Calculate derived operational features
-raw_staffing_ratios = volumes / (nurse_headcount * 0.5)  # Patients per nurse ratio
+    X_outcomes = np.column_stack((volumes, nurse_ratios, intensivists))
+    X_structure = np.column_stack((volumes, intensivists))
 
-# Target Outcomes with realistic statistical variance
-# Mortality is noisy and Discharge to home is non-linear
-mortality_noise = np.random.normal(90, 4, size=num_hospitals)
-discharge_noise = 75 + (raw_staffing_ratios * -2.5) + np.random.normal(0, 3, size=num_hospitals)
+    # Fit RF models
+    model_smr = RandomForestRegressor(n_estimators=100, random_state=42)
+    model_smr.fit(X_outcomes, smr)
+
+    model_discharge = RandomForestRegressor(n_estimators=100, random_state=42)
+    model_discharge.fit(X_outcomes, discharge)
+
+    model_tech_adoption = RandomForestRegressor(n_estimators=100, random_state=42)
+    model_tech_adoption.fit(X_structure, tech)
+
+    model_services_diversity = RandomForestRegressor(n_estimators=100, random_state=42)
+    model_services_diversity.fit(X_structure, services)
+
+    # Fit Linear models
+    model_staffing_ratio = LinearRegression()
+    model_staffing_ratio.fit(volumes.reshape(-1, 1), nurse_ratios)
+
+    model_expert_consults = LinearRegression()
+    model_expert_consults.fit(volumes.reshape(-1, 1), consults)
+
+    model_hcahps = LinearRegression()
+    model_hcahps.fit(nurse_ratios.reshape(-1, 1), hcahps)
+
+    # Fit OOD Guard
+    ood_guard = fit_ood_guard(
+        X_train=X_outcomes,
+        feature_keys=["patient_volume", "nurse_staffing_ratio", "intensivists_staffing"],
+        rf_model=model_smr,
+    )
+
+    dept_key = dept_id.lower()
+    DEPARTMENT_MODELS[dept_key] = {
+        "model_smr": model_smr,
+        "model_discharge": model_discharge,
+        "model_tech_adoption": model_tech_adoption,
+        "model_services_diversity": model_services_diversity,
+        "model_staffing_ratio": model_staffing_ratio,
+        "model_expert_consults": model_expert_consults,
+        "model_hcahps": model_hcahps,
+        "y_smr": smr,
+        "y_discharge": discharge,
+        "X_outcomes": X_outcomes,
+        "X_structure": X_structure,
+        "volumes": volumes,
+        "nurse_ratios": nurse_ratios,
+        "consults": consults,
+        "hcahps": hcahps,
+    }
+    DEPARTMENT_OOD_GUARDS[dept_key] = ood_guard
 
 
-# Random Forest Models to smooth out low-volume noise
-X_outcomes = np.column_stack((volumes, raw_staffing_ratios, intensivist_hours))
+# ---------------------------------------------------------------------------
+# Master prediction interface
+# ---------------------------------------------------------------------------
 
-model_mortality = RandomForestRegressor(n_estimators=50, random_state=42)
-model_mortality.fit(X_outcomes, mortality_noise)
+def predict_all_submetrics(current_state: dict, department_id: str = "cardiology") -> dict:
+    """Run the hospital's current state through the department's trained ML suite."""
+    dept_key = str(department_id).lower()
+    if dept_key not in DEPARTMENT_MODELS:
+        dept_key = "cardiology" if "cardiology" in DEPARTMENT_MODELS else next(iter(DEPARTMENT_MODELS.keys()))
 
-model_discharge = RandomForestRegressor(n_estimators=50, random_state=42)
-model_discharge.fit(X_outcomes, discharge_noise)
+    models = DEPARTMENT_MODELS[dept_key]
+    guard = DEPARTMENT_OOD_GUARDS[dept_key]
 
-# Linear Relationships
-# Volume drives staffing ratios linearly
-model_staffing_ratio = LinearRegression()
-model_staffing_ratio.fit(volumes.reshape(-1, 1), raw_staffing_ratios)
+    vol = float(current_state["patient_volume"])
+    intensivists = float(current_state["intensivists_staffing"])
+    nurse_magnet = int(current_state.get("nurse_magnet", 0))
 
-# Random Forest to manage bias/noisy reporting
-# Tech adoption and services diversity based on Volume and Intensive infrastructure
-X_structure = np.column_stack((volumes, icu_beds))
-tech_adoption_scores = 50 + (volumes * 0.02) + np.random.randint(-10, 10, size=num_hospitals)
-services_diversity_scores = 60 + (icu_beds * 0.8) + np.random.randint(-15, 15, size=num_hospitals)
+    # 1. Linear models — immediate structural dependencies
+    predicted_ratio = float(models["model_staffing_ratio"].predict([[vol]])[0])
+    predicted_consults = float(models["model_expert_consults"].predict([[vol]])[0])
 
-model_tech_adoption = RandomForestRegressor(n_estimators=50, random_state=42)
-model_tech_adoption.fit(X_structure, tech_adoption_scores)
+    # 2. HCAHPS driven by staffing ratio
+    predicted_hcahps = float(models["model_hcahps"].predict([[predicted_ratio]])[0])
 
-model_services_diversity = RandomForestRegressor(n_estimators=50, random_state=42)
-model_services_diversity.fit(X_structure, services_diversity_scores)
+    # 3. Structure models
+    X_struct = np.array([[vol, intensivists]])
+    predicted_tech = float(models["model_tech_adoption"].predict(X_struct)[0])
+    predicted_services = float(models["model_services_diversity"].predict(X_struct)[0])
 
-# PROCESS & PATIENT EXP (Linear Models):
+    # 4. OOD assessment on full outcome feature vector
+    X_outcome_query = np.array([[vol, predicted_ratio, intensivists]])
+    ood_result = assess_ood_confidence(guard, models["X_outcomes"], X_outcome_query)
 
-# Volume drives Expert Consults and HCAHPS
-model_expert_consults = LinearRegression()
-expert_consult_rates = 70 + (volumes * 0.01) + np.random.normal(0, 2, size=num_hospitals)
-model_expert_consults.fit(volumes.reshape(-1, 1), expert_consult_rates)
+    # 5. Outcome models — or nearest-neighbour fallback if out_of_range
+    if ood_result["level"] == "out_of_range":
+        predicted_smr = nearest_neighbor_fallback(guard, models["y_smr"], X_outcome_query)
+        predicted_discharge = nearest_neighbor_fallback(guard, models["y_discharge"], X_outcome_query)
+    else:
+        predicted_smr = float(models["model_smr"].predict(X_outcome_query)[0])
+        predicted_discharge = float(models["model_discharge"].predict(X_outcome_query)[0])
 
-model_hcahps = LinearRegression()
-# More patients per nurse explicitly drops patient satisfaction linearly
-hcahps_scores = 95 - (raw_staffing_ratios * 2.5) + np.random.normal(0, 1, size=num_hospitals)
-model_hcahps.fit(raw_staffing_ratios.reshape(-1, 1), hcahps_scores)
-
-
-
-# MASTER PREDICTION INTERFACE FOR THE BACKEND
-
-def predict_all_submetrics(current_state):
-    """
-    Takes the current raw dictionary of your hospital, runs it through 
-    the trained ML suite, and updates all dependent values.
-    """
-    vol = current_state["patient_volume"]
-    
-    # 1. Run Linear Models for immediate structural dependencies
-    predicted_ratio = float(model_staffing_ratio.predict([[vol]])[0])
-    predicted_consults = float(model_expert_consults.predict([[vol]])[0])
-    
-    # 2. Run HCAHPS based on the newly calculated staffing ratio
-    predicted_hcahps = float(model_hcahps.predict([[predicted_ratio]])[0])
-    
-    # 3. Run Tree models for complex administrative assets (assume baseline ICU beds = 25)
-    X_struct_input = [[vol, 25]]
-    predicted_tech = float(model_tech_adoption.predict(X_struct_input)[0])
-    predicted_services = float(model_services_diversity.predict(X_struct_input)[0])
-    
-    # 4. Run Tree models for clinical outcomes using updated operational variables
-    X_outcome_input = [[vol, predicted_ratio, current_state["intensivists_staffing"]]]
-    predicted_mortality = float(model_mortality.predict(X_outcome_input)[0])
-    predicted_discharge = float(model_discharge.predict(X_outcome_input)[0])
-    
-    # Apply dynamic multiplier boosts if Nurse Magnet Status is active
-    if current_state["nurse_magnet"] == 1:
-        predicted_hcahps += 5.0
-        predicted_discharge += 3.0
+    # 6. Nurse Magnet bonus
+    if nurse_magnet == 1:
+        predicted_hcahps += 3.0
+        predicted_discharge += 2.0
 
     return {
+        "calculated_smr": round(max(0.4, predicted_smr), 3),
+        "discharge_home_rate": round(min(99.0, max(40.0, predicted_discharge)), 1),
         "patient_volume": vol,
-        "mortality_survival_index": round(predicted_mortality, 1),
-        "discharge_home_rate": round(predicted_discharge, 1),
-        "nurse_staffing_ratio": round(predicted_ratio, 2),
-        "nurse_magnet": current_state["nurse_magnet"],
-        "advanced_tech_adoption": round(predicted_tech, 1),
-        "intensivists_staffing": current_state["intensivists_staffing"],
-        "patient_services_diversity": round(predicted_services, 1),
-        "expert_consults": round(predicted_consults, 1),
-        "public_transparency": current_state["public_transparency"], # Kept static as independent
-        "hcahps_score": round(min(100.0, predicted_hcahps), 1)
+        "advanced_tech_adoption": round(min(100.0, max(0.0, predicted_tech)), 1),
+        "nurse_staffing_ratio": round(max(0.5, predicted_ratio), 2),
+        "nurse_magnet": nurse_magnet,
+        "intensivists_staffing": intensivists,
+        "patient_services_diversity": round(min(100.0, max(0.0, predicted_services)), 1),
+        "trauma_center": current_state.get("trauma_center", 0),
+        "expert_consults": round(min(100.0, max(0.0, predicted_consults)), 1),
+        "public_transparency": float(current_state.get("public_transparency", 82.0)),
+        "hcahps_score": round(min(100.0, max(0.0, predicted_hcahps)), 1),
+        "ood_assessment": ood_result,
     }
 
 
-def evaluate_models(test_size=0.25, random_state=42):
-    """Train/test split and print R² for each ML model."""
-    results = []
+def evaluate_models(department_id: str = "cardiology", test_size: float = 0.25, random_state: int = 42) -> dict:
+    """Train/test split and report R² for each ML model in a department."""
+    dept_key = str(department_id).lower()
+    if dept_key not in DEPARTMENT_MODELS:
+        dept_key = next(iter(DEPARTMENT_MODELS.keys()))
 
-    # Outcome models
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_outcomes,
-        mortality_noise,
-        test_size=test_size,
-        random_state=random_state,
-    )
-    mortality_eval = RandomForestRegressor(n_estimators=50, random_state=random_state)
-    mortality_eval.fit(X_train, y_train)
-    mortality_pred = mortality_eval.predict(X_test)
-    results.append(("mortality", r2_score(y_test, mortality_pred)))
+    df = SYNTHETIC_TRAINING_DATA[dept_key]
+    volumes = df["patient_volume"].values
+    nurse_ratios = df["nurse_staffing_ratio"].values
+    intensivists = df["intensivists_staffing"].values
+    smr = df["calculated_smr"].values
+    discharge = df["discharge_home_rate"].values
+    tech = df["advanced_tech_adoption"].values
+    services = df["patient_services_diversity"].values
+    consults = df["expert_consults"].values
+    hcahps = df["hcahps_score"].values
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_outcomes,
-        discharge_noise,
-        test_size=test_size,
-        random_state=random_state,
-    )
-    discharge_eval = RandomForestRegressor(n_estimators=50, random_state=random_state)
-    discharge_eval.fit(X_train, y_train)
-    discharge_pred = discharge_eval.predict(X_test)
-    results.append(("discharge", r2_score(y_test, discharge_pred)))
+    X_outcomes = np.column_stack((volumes, nurse_ratios, intensivists))
+    X_structure = np.column_stack((volumes, intensivists))
 
-    # Structure models
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_structure,
-        tech_adoption_scores,
-        test_size=test_size,
-        random_state=random_state,
-    )
-    tech_eval = RandomForestRegressor(n_estimators=50, random_state=random_state)
-    tech_eval.fit(X_train, y_train)
-    tech_pred = tech_eval.predict(X_test)
-    results.append(("advanced_tech_adoption", r2_score(y_test, tech_pred)))
+    results: list[tuple[str, float]] = []
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_structure,
-        services_diversity_scores,
-        test_size=test_size,
-        random_state=random_state,
-    )
-    services_eval = RandomForestRegressor(n_estimators=50, random_state=random_state)
-    services_eval.fit(X_train, y_train)
-    services_pred = services_eval.predict(X_test)
-    results.append(("patient_services_diversity", r2_score(y_test, services_pred)))
+    def _eval_rf(X: np.ndarray, y: np.ndarray, name: str) -> None:
+        X_tr, X_te, y_tr, y_te = train_test_split(
+            X, y, test_size=test_size, random_state=random_state
+        )
+        m = RandomForestRegressor(n_estimators=100, random_state=random_state)
+        m.fit(X_tr, y_tr)
+        results.append((name, r2_score(y_te, m.predict(X_te))))
 
-    # Process models
-    X_train, X_test, y_train, y_test = train_test_split(
-        volumes.reshape(-1, 1),
-        raw_staffing_ratios,
-        test_size=test_size,
-        random_state=random_state,
-    )
-    staffing_eval = LinearRegression()
-    staffing_eval.fit(X_train, y_train)
-    staffing_pred = staffing_eval.predict(X_test)
-    results.append(("nurse_staffing_ratio", r2_score(y_test, staffing_pred)))
+    def _eval_lr(X: np.ndarray, y: np.ndarray, name: str) -> None:
+        X_tr, X_te, y_tr, y_te = train_test_split(
+            X, y, test_size=test_size, random_state=random_state
+        )
+        m = LinearRegression()
+        m.fit(X_tr, y_tr)
+        results.append((name, r2_score(y_te, m.predict(X_te))))
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        volumes.reshape(-1, 1),
-        expert_consult_rates,
-        test_size=test_size,
-        random_state=random_state,
-    )
-    consults_eval = LinearRegression()
-    consults_eval.fit(X_train, y_train)
-    consults_pred = consults_eval.predict(X_test)
-    results.append(("expert_consults", r2_score(y_test, consults_pred)))
+    _eval_rf(X_outcomes, smr, "calculated_smr")
+    _eval_rf(X_outcomes, discharge, "discharge_home_rate")
+    _eval_rf(X_structure, tech, "advanced_tech_adoption")
+    _eval_rf(X_structure, services, "patient_services_diversity")
+    _eval_lr(volumes.reshape(-1, 1), nurse_ratios, "nurse_staffing_ratio")
+    _eval_lr(volumes.reshape(-1, 1), consults, "expert_consults")
+    _eval_lr(nurse_ratios.reshape(-1, 1), hcahps, "hcahps_score")
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        raw_staffing_ratios.reshape(-1, 1),
-        hcahps_scores,
-        test_size=test_size,
-        random_state=random_state,
-    )
-    hcahps_eval = LinearRegression()
-    hcahps_eval.fit(X_train, y_train)
-    hcahps_pred = hcahps_eval.predict(X_test)
-    results.append(("hcahps_score", r2_score(y_test, hcahps_pred)))
-
-    print("Model evaluation results (R² on test split):")
+    print(f"Model evaluation results for department '{dept_key}' (R² on test split):")
     for name, score in results:
-        print(f" - {name}: {score:.3f}")
+        print(f"  - {name}: {score:.3f}")
 
-    return {name: score for name, score in results}
+    return dict(results)
 
 
 if __name__ == "__main__":

@@ -93,50 +93,50 @@ def simulate():
 def predict():
     """
     POST /api/predict
-    Note: ml_models.py is trained on a synthetic/simulated dataset of 100 Bay Area hospitals
-    using Random Forest and Linear Regression models. Its predictions demonstrate ML-based
-    operational outcome forecasting and are illustrative rather than clinically validated.
+    Note: ml_models.py is trained on synthetic hospital state data (60 synthetic hospitals per department)
+    using Random Forest, Linear Regression, and an OOD (Out-Of-Distribution) Guard suite per department.
 
     Body:
     {
+        "department_id": string (optional, default "cardiology"),
         "patient_volume": number (optional),
         "intensivists_staffing": number (optional),
         "nurse_magnet": 0 | 1 (optional),
-        "public_transparency": number (optional)
+        "public_transparency": number (optional),
+        "trauma_center": 0 | 1 (optional)
     }
 
     Returns:
     {
         "predicted_raw": { ... },
         "predicted_scores": { ... },
+        "ood_assessment": { "level": "confident" | "caution" | "out_of_range", "score": number, ... },
         "notes": string
     }
     """
     data = request.get_json(silent=True) or {}
-    baseline_hospital = HOSPITAL_DATA.get("Cardiology", {}).get("my_hospital", {}).copy()
+    dept_id = str(data.get("department_id", "cardiology")).lower()
+    cardio_data = HOSPITAL_DATA.get(dept_id, HOSPITAL_DATA.get("cardiology", HOSPITAL_DATA.get("Cardiology", {})))
+    baseline_hospital = cardio_data.get("my_hospital", {}).copy()
 
     # Merge default hospital values with incoming request payload overrides
     input_state = {
         "patient_volume": float(data.get("patient_volume", baseline_hospital.get("patient_volume", 600))),
-        "nurse_staffing_ratio": float(data.get("nurse_staffing_ratio", baseline_hospital.get("nurse_staffing_ratio", 6.5))),
+        "nurse_staffing_ratio": float(data.get("nurse_staffing_ratio", baseline_hospital.get("nurse_staffing_ratio", 3.5))),
         "nurse_magnet": int(data.get("nurse_magnet", baseline_hospital.get("nurse_magnet", 0))),
-        "intensivists_staffing": float(data.get("intensivists_staffing", baseline_hospital.get("intensivists_staffing", 40.0))),
+        "intensivists_staffing": float(data.get("intensivists_staffing", baseline_hospital.get("intensivists_staffing", 18.0))),
         "expert_consults": float(data.get("expert_consults", baseline_hospital.get("expert_consults", 85.0))),
-        "public_transparency": float(data.get("public_transparency", baseline_hospital.get("public_transparency", 92.0))),
-        "hcahps_score": float(data.get("hcahps_score", baseline_hospital.get("hcahps_score", 75.0)))
+        "public_transparency": float(data.get("public_transparency", baseline_hospital.get("public_transparency", 82.0))),
+        "hcahps_score": float(data.get("hcahps_score", baseline_hospital.get("hcahps_score", 75.0))),
+        "trauma_center": int(data.get("trauma_center", baseline_hospital.get("trauma_center", 0)))
     }
 
     try:
-        # 1. Execute Random Forest + Linear Regression predictions from ml_models.py
-        raw_predictions = predict_all_submetrics(input_state)
+        # 1. Execute Random Forest + Linear Regression + OOD Guard predictions from ml_models.py
+        raw_predictions = predict_all_submetrics(input_state, department_id=dept_id)
+        ood_assessment = raw_predictions.pop("ood_assessment", None)
 
-        # 2. Reconcile unit mismatch: convert mortality_survival_index (~75-100%, higher=better)
-        # into calculated_smr (0.5-1.5 ratio, lower=better) via linear transformation
-        surv_index = raw_predictions.get("mortality_survival_index", 90.0)
-        derived_smr = max(0.5, min(1.5, round(1.0 + (90.0 - surv_index) / 20.0, 3)))
-        raw_predictions["calculated_smr"] = derived_smr
-
-        # 3. Normalize predicted metric values into 0-100 scores using engine.py METRIC_LIMITS
+        # 2. Normalize predicted metric values into 0-100 scores using engine.py METRIC_LIMITS
         predicted_scores = {}
         for key, val in raw_predictions.items():
             if key in METRIC_LIMITS:
@@ -148,22 +148,16 @@ def predict():
                     higher_is_better=limits["higher_is_better"]
                 )
 
-        # Also normalize mortality_survival_index directly on 75-100 scale for explicit visibility
-        if "mortality_survival_index" in raw_predictions:
-            val = raw_predictions["mortality_survival_index"]
-            predicted_scores["mortality_survival_index"] = float(max(0.0, min(100.0, ((val - 75.0) / (100.0 - 75.0)) * 100)))
-
         notes = (
-            "ml_models.py is trained on synthetic/simulated hospital state data (100 Bay Area hospitals) "
-            "using Random Forest and Linear Regression models. Predictions are illustrative. "
-            "Reconciliation: mortality_survival_index (~75-100%, higher=better) was mapped to "
-            "calculated_smr (0.5-1.5 ratio, lower=better) via formula `1.0 + (90.0 - survival_index)/20.0` "
-            "to enable scoring against engine.py METRIC_LIMITS."
+            "ml_models.py is trained on synthetic hospital state data (60 hospitals across 10 departments) "
+            "using Random Forest and Linear Regression models with a multi-layer OOD (Out-Of-Distribution) Guard per department. "
+            "Canonical outcome key: calculated_smr (lower = better)."
         )
 
         return jsonify({
             "predicted_raw": raw_predictions,
             "predicted_scores": predicted_scores,
+            "ood_assessment": ood_assessment,
             "notes": notes
         }), 200
 
@@ -174,11 +168,19 @@ def predict():
 @app.route("/api/hospitals/compare", methods=["GET"])
 def compare():
     """
-    GET /api/hospitals/compare?dept=Cancer
-    Returns mock hospital comparison data for the given department.
+    GET /api/hospitals/compare?dept=cancer
+    Returns mock/synthetic hospital comparison data for the given department.
     """
-    dept = request.args.get("dept", "Cancer")
-    dept_data = HOSPITAL_DATA.get(dept, HOSPITAL_DATA.get("Cancer"))
+    dept = request.args.get("dept", "cancer").lower()
+    dept_data = HOSPITAL_DATA.get(dept)
+    if not dept_data:
+        for k, v in HOSPITAL_DATA.items():
+            if k.lower() == dept:
+                dept_data = v
+                break
+    if not dept_data:
+        dept_data = next(iter(HOSPITAL_DATA.values()))
+
     return jsonify({
         "department": dept,
         "my_hospital": dept_data["my_hospital"],
@@ -194,4 +196,3 @@ def health():
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
-

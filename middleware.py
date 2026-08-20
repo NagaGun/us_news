@@ -112,7 +112,7 @@ HOSPITAL METRICS (Hospital ID: {hosp.get('hospital_id', 'N/A')}):
   - Public Transparency Score: {hosp.get('public_transparency', 'N/A')}%
   - HCAHPS Patient Satisfaction: {hosp.get('hcahps_score', 'N/A')}%
   - Discharge Home Rate: {hosp.get('discharge_home_rate', 'N/A')}%
-  - Mortality Survival Index: {hosp.get('mortality_survival_index', 'N/A')}%
+  - Standardised Mortality Ratio (SMR): {hosp.get('calculated_smr', 'N/A')}
 
 PEER GROUP AVERAGES ({context['peer_count']} hospitals):
   - Patient Volume: {peers.get('patient_volume', 'N/A')}
@@ -121,7 +121,7 @@ PEER GROUP AVERAGES ({context['peer_count']} hospitals):
   - Expert Consult Rate: {peers.get('expert_consults', 'N/A')}%
   - HCAHPS Score: {peers.get('hcahps_score', 'N/A')}%
   - Discharge Home Rate: {peers.get('discharge_home_rate', 'N/A')}%
-  - Mortality Survival Index: {peers.get('mortality_survival_index', 'N/A')}%
+  - Standardised Mortality Ratio (SMR): {peers.get('calculated_smr', 'N/A')}
 
 Answer the user's question below using ONLY the above data.
 """

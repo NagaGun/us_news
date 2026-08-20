@@ -9,3 +9,7 @@ coverage/
 .env.example
 settings.json.local
 settings.json
+.env
+.claude/
+
+repo-mirror.git/

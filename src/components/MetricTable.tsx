@@ -404,7 +404,7 @@ export default function MetricTable({
                           step={m.unit === 'FTE' ? 0.05 : m.unit === 'hr/d' ? 0.5 : m.unit === '#' ? 1 : 0.5}
                           value={simulatedValue}
                           onChange={(e) => onSimulationValueChange(m.id, parseFloat(e.target.value))}
-                          className="w-full accent-blue-500 bg-slate-800 rounded-lg appearance-none h-1 cursor-pointer focus:outline-none"
+                          className="w-full accent-blue-500 h-2 bg-slate-700 rounded-lg cursor-pointer my-2"
                         />
                       )
                     )}
