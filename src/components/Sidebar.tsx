@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Home, Building2, Award, ShieldAlert, Heart, Activity, ArrowLeftRight, Globe2 } from 'lucide-react';
+import { Home, Building2, Award, ShieldAlert, Heart, Activity, ArrowLeftRight, Globe2, Zap } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -16,6 +16,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: 'home', name: 'Home', icon: Home, badge: null },
     { id: 'hospitals', name: 'Hospitals', icon: Building2, badge: 'New' },
     { id: 'compare', name: 'Quality / Compare', icon: ArrowLeftRight, badge: null },
+    { id: 'calculator', name: 'API Calculator', icon: Zap, badge: 'Lambda' },
   ];
 
   return (

@@ -1,14 +1,14 @@
 FROM public.ecr.aws/lambda/python:3.11
 
-# Copy dependency file
+# Copy dependency specifications
 COPY requirements.txt ./
 
-# Upgrade pip and install pre-built wheels
+# Force pip to use pre-compiled binary wheels ONLY
 RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip3 install --no-cache-dir -r requirements.txt
+    pip3 install --no-cache-dir --only-binary=:all: -r requirements.txt
 
-# Copy application files
+# Copy handler and model files
 COPY ml_models.py engine.py ./
 
-# Set the Lambda handler
+# Set Lambda handler entry point
 CMD [ "engine.handler" ]

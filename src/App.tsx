@@ -12,7 +12,10 @@ import ChatWidget from './components/ChatWidget';
 import CompareView from './components/CompareView';
 import LandingPage from './components/LandingPage';
 import OodBadge from './components/OodBadge';
+import HospitalScoreCalculator from './components/HospitalScoreCalculator';
 import { useBackendSimulation } from './backendSimulation';
+
+export { HospitalScoreCalculator };
 
 import { PEER_GROUPS, DEPARTMENTS, BASELINE_TARGETS, ADVANCED_TECH_ITEMS } from './data';
 import { calculateScores } from './utils';
@@ -189,7 +192,7 @@ export default function App() {
         <div className="flex-1 pl-64 flex flex-col min-w-0">
 
           {/* Top Control Bar (Shown on Home and Hospitals pages) */}
-          {activeTab !== 'compare' && (
+          {activeTab !== 'compare' && activeTab !== 'calculator' && (
             <TopBar
               selectedPeerGroup={selectedPeerGroup}
               setSelectedPeerGroup={setSelectedPeerGroup}
@@ -211,6 +214,8 @@ export default function App() {
                 isSimulated={isSimulated}
                 onResetSimulation={handleResetActiveDeptSimulation}
               />
+            ) : activeTab === 'calculator' ? (
+              <HospitalScoreCalculator />
             ) : activeTab === 'home' ? (
               <div className="space-y-6">
 
