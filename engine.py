@@ -266,3 +266,40 @@ def evaluate_hospital(target_overrides: Optional[dict] = None, department_id: st
         "raw_metrics": current_metrics,
         "ood_assessment": ood_assessment,
     }
+
+
+# ---------------------------------------------------------------------------
+# AWS Lambda entry point
+# ---------------------------------------------------------------------------
+
+def handler(event: dict, context: object) -> dict:
+    """AWS Lambda handler — invoked by Lambda runtime.
+
+    Accepts an optional JSON body with:
+      - target_overrides (dict): metric overrides to simulate
+      - department_id    (str):  department to evaluate (default: cardiology)
+    """
+    import json
+
+    body: dict = {}
+    if isinstance(event.get("body"), str):
+        try:
+            body = json.loads(event["body"])
+        except (json.JSONDecodeError, TypeError):
+            body = {}
+    elif isinstance(event.get("body"), dict):
+        body = event["body"]
+
+    target_overrides = body.get("target_overrides") or event.get("target_overrides")
+    department_id = body.get("department_id") or event.get("department_id", "cardiology")
+
+    result = evaluate_hospital(
+        target_overrides=target_overrides,
+        department_id=department_id,
+    )
+
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps(result),
+    }
